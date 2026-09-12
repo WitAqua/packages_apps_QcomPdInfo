@@ -7,12 +7,16 @@
 // One screen, two builds. What differs between them is only how a file in /sys
 // may be opened:
 //
-//   PdInfo      ships inside the ROM. Platform signature and the system shared
-//               user id, so it reads the nodes itself once the device tree has
-//               labelled them for system_app. No root.
-//   PdInfoRoot  installs on somebody else's ROM. Ordinary signature, and the
-//               reads go through a root shell because nothing there labelled
-//               anything for it.
+//   QcomPdInfo      ships inside the ROM. Platform signature and the system
+//                   shared user id, so it reads the nodes itself once the
+//                   device tree has labelled them for system_app. No root.
+//   QcomPdInfoRoot  installs on somebody else's ROM. Ordinary signature, and
+//                   the reads go through a root shell because nothing there
+//                   labelled anything for it.
+//
+// The names carry Qcom because the interfaces they read are qualcomm's and
+// qualcomm's UCSI glue - a board from anyone else would want a sibling of this
+// rather than this, and two modules cannot share a name in one tree.
 //
 // Neither the kernel interface nor the way in is chosen at build time - both
 // follow what can actually be read. See core/.../source/Sources.kt.
@@ -46,7 +50,7 @@ android_library {
 }
 
 android_app {
-    name: "PdInfo",
+    name: "QcomPdInfo",
 
     manifest: "rom/AndroidManifest.xml",
 
@@ -66,7 +70,7 @@ android_app {
 }
 
 android_app {
-    name: "PdInfoRoot",
+    name: "QcomPdInfoRoot",
 
     manifest: "root/AndroidManifest.xml",
 

@@ -9,7 +9,7 @@
  * only a build inside an android tree can give it - but a tree is not
  * something CI has, so the sideloaded variant is built here instead.
  *
- * Only PdInfoRoot comes out of this. It is the same code either way: which
+ * Only QcomPdInfoRoot comes out of this. It is the same code either way: which
  * kernel interface is read, and whether the files are opened directly or
  * through a root shell, are both decided at runtime.
  */
@@ -91,7 +91,7 @@ android {
     applicationVariants.all {
         outputs.all {
             (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
-                .outputFileName = "PdInfoRoot.apk"
+                .outputFileName = "QcomPdInfoRoot.apk"
         }
     }
 }

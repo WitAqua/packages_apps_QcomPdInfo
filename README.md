@@ -25,7 +25,7 @@ Read-only throughout. It reports a negotiation; it does not take part in one.
 Two builds come out of this tree, differing only in how a file in `/sys` may be
 opened:
 
-| | `PdInfo` | `PdInfoRoot` |
+| | `QcomPdInfo` | `QcomPdInfoRoot` |
 | --- | --- | --- |
 | Ships | inside a ROM | sideloaded onto someone else's |
 | Signature | platform | ordinary |
@@ -36,8 +36,8 @@ opened:
 Neither the kernel interface nor the way in is chosen at build time. Both
 follow what can actually be read - see `core/src/.../source/Sources.kt`.
 
-For the sideloaded build, packaged as a KernelSU module:
-[Qcom-PD-Info-KSU](https://github.com/WitAqua-tools/Qcom-PD-Info-KSU).
+For the sideloaded build, packaged as a module for KernelSU or Magisk:
+[Qcom-PD-Info-Module](https://github.com/WitAqua-tools/Qcom-PD-Info-Module).
 
 ## Building it into a ROM
 
@@ -54,11 +54,11 @@ Add it to your manifest, or to a local manifest:
 
 ### 2. Build the app
 
-`PdInfo` is the ROM variant. Add it to the device makefile:
+`QcomPdInfo` is the ROM variant. Add it to the device makefile:
 
 ```make
 PRODUCT_PACKAGES += \
-    PdInfo
+    QcomPdInfo
 ```
 
 It needs nothing else: `androidx.appcompat` and `androidx.preference` come from
@@ -113,7 +113,7 @@ adb shell su -c 'ls -Z /sys/class/power_supply/*/voltage_now'
 
 ### 4. What you get
 
-With the nodes readable, `PdInfo` needs no root and no debugfs. On a board with
+With the nodes readable, `QcomPdInfo` needs no root and no debugfs. On a board with
 Qualcomm's driver that is the whole of it. On one with the upstream class whose
 firmware does not report that it can list its objects, the list will not appear
 however the policy is written - the kernel never read it. That case, and the
@@ -124,7 +124,7 @@ one-line kernel change that fixes it, are in
 
 Soong is the primary build - the ROM variant wants the platform signature and
 the system shared user id, which only a build inside an android tree can give
-it. `PdInfoRoot` can also be built with Gradle, which is what CI does, since a
+it. `QcomPdInfoRoot` can also be built with Gradle, which is what CI does, since a
 runner has no tree:
 
 ```sh
@@ -135,7 +135,7 @@ It comes out unsigned unless `STORE_FILE`, `STORE_PASSWORD`, `KEY_ALIAS` and
 `KEY_PASSWORD` are in the environment. The key lives in
 [WitAqua-tools/Android-Keys](https://github.com/WitAqua-tools/Android-Keys),
 and the build that gets published is made by
-[Qcom-PD-Info-KSU](https://github.com/WitAqua-tools/Qcom-PD-Info-KSU)'s release
+[Qcom-PD-Info-Module](https://github.com/WitAqua-tools/Qcom-PD-Info-Module)'s release
 workflow rather than by hand.
 
 `gradle/AndroidManifest.xml` is the sideloaded variant's manifest without the

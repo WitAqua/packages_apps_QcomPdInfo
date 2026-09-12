@@ -90,7 +90,7 @@ where the driver gets it from too, so both halves are recoverable.
 This is what the app does when it finds the class registered and empty, and it
 is what the KernelSU module exists to enable - debugfs is not mounted by
 default, and for good reason. See
-[Qcom-PD-Info-KSU](https://github.com/WitAqua-tools/Qcom-PD-Info-KSU).
+[Qcom-PD-Info-Module](https://github.com/WitAqua-tools/Qcom-PD-Info-Module).
 
 It needs root, and an SELinux context that may reach debugfs - the shell's may
 not. It is not something a ROM should rely on.
