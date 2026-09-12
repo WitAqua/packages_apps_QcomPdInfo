@@ -120,6 +120,29 @@ however the policy is written - the kernel never read it. That case, and the
 one-line kernel change that fixes it, are in
 [docs/kernel.md](docs/kernel.md).
 
+## Building the sideloaded variant
+
+Soong is the primary build - the ROM variant wants the platform signature and
+the system shared user id, which only a build inside an android tree can give
+it. `PdInfoRoot` can also be built with Gradle, which is what CI does, since a
+runner has no tree:
+
+```sh
+gradle assembleRelease
+```
+
+It comes out unsigned unless `STORE_FILE`, `STORE_PASSWORD`, `KEY_ALIAS` and
+`KEY_PASSWORD` are in the environment. The key lives in
+[WitAqua-tools/Android-Keys](https://github.com/WitAqua-tools/Android-Keys),
+and the build that gets published is made by
+[Qcom-PD-Info-KSU](https://github.com/WitAqua-tools/Qcom-PD-Info-KSU)'s release
+workflow rather than by hand.
+
+`gradle/AndroidManifest.xml` is the sideloaded variant's manifest without the
+package attribute, which AGP 8 refuses because it takes the application id from
+`build.gradle.kts`. Soong reads it from the manifest and has nowhere else to
+look, so the two cannot share a file - keep them in step.
+
 ## Documentation
 
 - [docs/kernel.md](docs/kernel.md) - which interface a kernel publishes, what

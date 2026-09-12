@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<!-- The sideloaded build, for the Gradle build only.
+
+     It is the same declarations as root/AndroidManifest.xml without the
+     package attribute, which AGP 8 refuses: it takes the application id from
+     build.gradle.kts and errors on a manifest that also names one. Soong takes
+     it from the manifest and has nowhere else to read it, so the two cannot
+     share a file. Keep them in step.
+
+     Only the sideloaded build is here. The ROM build is a Soong target by
+     definition - it wants the platform signature and the system shared user
+     id, neither of which Gradle can give it. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PdInfo">
+        <activity
+            android:name="org.witaqua.qcom.pd_info.ui.PdInfoActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
