@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<!-- The shared half: reading and wording, with no screen of its own. Both
+     builds link it, so the generated R lives in this package and the strings
+     are written once. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.witaqua.qcom.pd_info" />

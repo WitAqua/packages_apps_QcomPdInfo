@@ -1,0 +1,85 @@
+//
+// Copyright (C) 2026 The WitAqua Project
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
+// One screen, two builds. What differs between them is only how a file in /sys
+// may be opened:
+//
+//   PdInfo      ships inside the ROM. Platform signature and the system shared
+//               user id, so it reads the nodes itself once the device tree has
+//               labelled them for system_app. No root.
+//   PdInfoRoot  installs on somebody else's ROM. Ordinary signature, and the
+//               reads go through a root shell because nothing there labelled
+//               anything for it.
+//
+// Neither the kernel interface nor the way in is chosen at build time - both
+// follow what can actually be read. See core/.../source/Sources.kt.
+
+// One library, not two. Soong names a library's R class after its merged
+// manifest package, and two libraries here would both land on
+// org.witaqua.qcom.pd_info.R - whichever the app compiled against would be
+// missing the other's resources. The core/ and ui/ directories still separate
+// the reading from the drawing; the Kotlin package names are what keep that
+// honest, rather than the build.
+android_library {
+    name: "QcomPdInfoLib",
+
+    srcs: [
+        "core/src/**/*.kt",
+        "ui/src/**/*.kt",
+    ],
+    resource_dirs: [
+        "core/res",
+        "ui/res",
+    ],
+    manifest: "core/AndroidManifest.xml",
+
+    sdk_version: "current",
+    min_sdk_version: "31",
+
+    static_libs: [
+        "androidx.appcompat_appcompat",
+        "androidx.preference_preference",
+    ],
+}
+
+android_app {
+    name: "PdInfo",
+
+    manifest: "rom/AndroidManifest.xml",
+
+    // The signature is the whole point of this variant: it is what gets the
+    // system shared user id, which is what the device tree's sepolicy grants
+    // the sysfs reads to.
+    certificate: "platform",
+    platform_apis: true,
+
+    static_libs: [
+        "QcomPdInfoLib",
+    ],
+
+    optimize: {
+        proguard_flags_files: ["proguard.flags"],
+    },
+}
+
+android_app {
+    name: "PdInfoRoot",
+
+    manifest: "root/AndroidManifest.xml",
+
+    // Deliberately an ordinary application: it has to install on a ROM whose
+    // platform key is not ours, so it can hold no signature permission.
+    sdk_version: "current",
+    min_sdk_version: "31",
+
+    static_libs: [
+        "QcomPdInfoLib",
+    ],
+
+    optimize: {
+        proguard_flags_files: ["proguard.flags"],
+    },
+}

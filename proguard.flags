@@ -1,0 +1,5 @@
+# The activity and fragment are named from the manifest and from the fragment
+# manager, so neither reaches them by a call R8 can see.
+-keep class org.witaqua.qcom.pd_info.ui.* {
+  *;
+}

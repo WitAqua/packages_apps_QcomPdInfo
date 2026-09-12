@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">USB Power Delivery</string>
+    <string name="pd_title">USB Power Delivery</string>
+    <string name="pd_summary">充電器が提示した電力と、実際に引いている電力</string>
+
+    <string name="section_port">ポート <xliff:g id="name" example="port0">%1$s</xliff:g></string>
+    <string name="section_port_unnamed">ポート</string>
+    <string name="section_advertised">充電器が提示した電力</string>
+    <string name="section_in_use">使用中</string>
+    <string name="section_measured"><xliff:g id="supply" example="usb">%1$s</xliff:g> での実測</string>
+    <string name="section_why_empty">一覧が出ない理由</string>
+    <string name="section_unavailable">取得できません</string>
+
+    <string name="label_contract">契約</string>
+    <string name="label_power_role">電源ロール</string>
+    <string name="label_data_role">データロール</string>
+    <string name="label_protocol">プロトコル</string>
+    <string name="label_pd_revision">PD リビジョン</string>
+    <string name="label_partner">充電器</string>
+    <string name="label_object">オブジェクト <xliff:g id="index" example="1">%1$d</xliff:g></string>
+    <string name="label_request">要求</string>
+    <string name="label_negotiated_current">ネゴした電流</string>
+    <string name="label_reported_as">報告された種別</string>
+    <string name="label_voltage">電圧</string>
+    <string name="label_current">電流</string>
+    <string name="label_platform">プラットフォーム</string>
+    <string name="label_kernel">カーネル</string>
+
+    <string name="contract_explicit">確立済み</string>
+    <string name="contract_implicit">未確立</string>
+    <string name="role_source">給電 (Source)</string>
+    <string name="role_sink">受電 (Sink)</string>
+    <string name="role_host">ホスト (DFP)</string>
+    <string name="role_device">デバイス (UFP)</string>
+    <string name="role_none">未接続</string>
+    <string name="partner_supports_pd">Power Delivery 対応</string>
+    <string name="partner_no_pd">Power Delivery 非対応</string>
+
+    <string name="capability_fixed">固定 <xliff:g id="volts">%1$s</xliff:g>V <xliff:g id="amps">%2$s</xliff:g>A</string>
+    <string name="capability_battery">バッテリー <xliff:g id="min">%1$s</xliff:g>〜<xliff:g id="max">%2$s</xliff:g>V <xliff:g id="watts">%3$s</xliff:g>W</string>
+    <string name="capability_variable">可変 <xliff:g id="min">%1$s</xliff:g>〜<xliff:g id="max">%2$s</xliff:g>V <xliff:g id="amps">%3$s</xliff:g>A</string>
+    <string name="capability_programmable">PPS <xliff:g id="min">%1$s</xliff:g>〜<xliff:g id="max">%2$s</xliff:g>V <xliff:g id="amps">%3$s</xliff:g>A</string>
+    <string name="capability_adjustable">AVS 9〜15V で <xliff:g id="low">%1$s</xliff:g>A、15〜20V で <xliff:g id="high">%2$s</xliff:g>A</string>
+    <string name="capability_unknown">未対応の形式 (<xliff:g id="word">%1$s</xliff:g>)</string>
+
+    <string name="request_current">オブジェクト <xliff:g id="index">%1$d</xliff:g>、最大 <xliff:g id="amps">%2$s</xliff:g>A</string>
+    <string name="request_power">オブジェクト <xliff:g id="index">%1$d</xliff:g>、最大 <xliff:g id="watts">%2$s</xliff:g>W</string>
+    <string name="request_programmable">オブジェクト <xliff:g id="index">%1$d</xliff:g>、<xliff:g id="volts">%2$s</xliff:g>V・最大 <xliff:g id="amps">%3$s</xliff:g>A</string>
+
+    <string name="flag_unconstrained">電源から給電</string>
+    <string name="flag_dual_role_power">給電・受電の両対応</string>
+    <string name="flag_dual_role_data">ホスト・デバイスの両対応</string>
+    <string name="flag_usb_comms">USB 通信対応</string>
+    <string name="flag_suspend">サスペンド対応</string>
+    <string name="list_separator">"、"</string>
+    <string name="note_source_flags">充電器の申告: <xliff:g id="flags">%1$s</xliff:g>。</string>
+
+    <string name="note_current_from_request">これは要求オブジェクトから取った合意済みの電流で、実測値ではありません。対応する電圧は充電器のオブジェクト一覧が必要で、このカーネルはそれを読んでいません。</string>
+    <string name="note_measured_not_agreed">要求ではなく実際に供給されている値です。upstream のインタフェースは要求オブジェクトを公開しません。</string>
+    <string name="note_no_capabilities">カーネルは Power Delivery のデバイスを作りましたが、capabilities を登録していないため、オブジェクト一覧は取得できません。UCSI ではファームウェアが PDO の詳細を報告しない場合、またはプラットフォームが充電器側のオブジェクトを読まない場合にこうなります。ユーザー空間から復元する手段はありません。</string>
+    <string name="note_unavailable">Power Delivery のインタフェースが見つかりませんでした。一覧には Qualcomm 独自の /sys/class/usbpd か、upstream の /sys/class/usb_power_delivery のどちらかが必要ですが、このカーネルはどちらも公開していません。</string>
+
+    <string name="root_needed">この ROM では読み取りに root 権限が必要ですが、許可されませんでした。</string>
+    <string name="refresh">更新</string>
+</resources>

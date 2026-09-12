@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- androidx.preference needs an AppCompat theme and the preference
+         attributes that come with it. DayNight so the screen follows the rest
+         of the system rather than deciding for itself. -->
+    <style name="Theme.PdInfo" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

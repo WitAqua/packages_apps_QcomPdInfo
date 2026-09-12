@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">USB Power Delivery</string>
+    <string name="pd_title">USB Power Delivery</string>
+    <string name="pd_summary">What the charger offers and what is being drawn</string>
+
+    <string name="section_port">Port <xliff:g id="name" example="port0">%1$s</xliff:g></string>
+    <string name="section_port_unnamed">Port</string>
+    <string name="section_advertised">Offered by the charger</string>
+    <string name="section_in_use">In use</string>
+    <string name="section_measured">Measured at <xliff:g id="supply" example="usb">%1$s</xliff:g></string>
+    <string name="section_why_empty">Why the list is missing</string>
+    <string name="section_unavailable">Not available</string>
+
+    <string name="label_contract">Contract</string>
+    <string name="label_power_role">Power role</string>
+    <string name="label_data_role">Data role</string>
+    <string name="label_protocol">Protocol</string>
+    <string name="label_pd_revision">PD revision</string>
+    <string name="label_partner">Charger</string>
+    <string name="label_object">Object <xliff:g id="index" example="1">%1$d</xliff:g></string>
+    <string name="label_request">Request</string>
+    <string name="label_negotiated_current">Negotiated current</string>
+    <string name="label_reported_as">Reported as</string>
+    <string name="label_voltage">Voltage</string>
+    <string name="label_current">Current</string>
+    <string name="label_platform">Platform</string>
+    <string name="label_kernel">Kernel</string>
+
+    <string name="contract_explicit">Negotiated</string>
+    <string name="contract_implicit">Not negotiated</string>
+    <string name="role_source">Supplying (source)</string>
+    <string name="role_sink">Drawing (sink)</string>
+    <string name="role_host">Host (DFP)</string>
+    <string name="role_device">Device (UFP)</string>
+    <string name="role_none">Nothing attached</string>
+    <string name="partner_supports_pd">Speaks power delivery</string>
+    <string name="partner_no_pd">Does not speak power delivery</string>
+
+    <string name="capability_fixed">Fixed <xliff:g id="volts">%1$s</xliff:g>V <xliff:g id="amps">%2$s</xliff:g>A</string>
+    <string name="capability_battery">Battery <xliff:g id="min">%1$s</xliff:g>-<xliff:g id="max">%2$s</xliff:g>V <xliff:g id="watts">%3$s</xliff:g>W</string>
+    <string name="capability_variable">Variable <xliff:g id="min">%1$s</xliff:g>-<xliff:g id="max">%2$s</xliff:g>V <xliff:g id="amps">%3$s</xliff:g>A</string>
+    <string name="capability_programmable">PPS <xliff:g id="min">%1$s</xliff:g>-<xliff:g id="max">%2$s</xliff:g>V <xliff:g id="amps">%3$s</xliff:g>A</string>
+    <string name="capability_adjustable">AVS <xliff:g id="low">%1$s</xliff:g>A at 9-15V, <xliff:g id="high">%2$s</xliff:g>A at 15-20V</string>
+    <string name="capability_unknown">Unrecognised (<xliff:g id="word">%1$s</xliff:g>)</string>
+
+    <string name="request_current">Object <xliff:g id="index">%1$d</xliff:g>, up to <xliff:g id="amps">%2$s</xliff:g>A</string>
+    <string name="request_power">Object <xliff:g id="index">%1$d</xliff:g>, up to <xliff:g id="watts">%2$s</xliff:g>W</string>
+    <string name="request_programmable">Object <xliff:g id="index">%1$d</xliff:g>, <xliff:g id="volts">%2$s</xliff:g>V up to <xliff:g id="amps">%3$s</xliff:g>A</string>
+
+    <string name="value_volts"><xliff:g id="volts">%1$s</xliff:g>V</string>
+    <string name="value_amps"><xliff:g id="amps">%1$s</xliff:g>A</string>
+
+    <string name="flag_unconstrained">mains powered</string>
+    <string name="flag_dual_role_power">dual-role power</string>
+    <string name="flag_dual_role_data">dual-role data</string>
+    <string name="flag_usb_comms">USB data</string>
+    <string name="flag_suspend">suspend supported</string>
+    <string name="list_separator">", "</string>
+    <string name="note_source_flags">The charger says: <xliff:g id="flags">%1$s</xliff:g>.</string>
+
+    <string name="note_current_from_request">This is the current that was agreed, taken from the request object, not a measurement. The voltage that would go with it needs the charger\'s object list, which this kernel did not read.</string>
+    <string name="note_measured_not_agreed">This is what is being delivered rather than what was asked for: the upstream interface publishes no request object.</string>
+    <string name="note_no_capabilities">The kernel created the power delivery devices but registered no capabilities in them, so the object list is not available. With UCSI that happens when the firmware does not report PDO details, or when the platform skips reading the charger\'s objects. Nothing in userspace can recover them.</string>
+    <string name="note_unavailable">No power delivery interface was found. The list needs either Qualcomm\'s own driver at /sys/class/usbpd or the upstream class at /sys/class/usb_power_delivery, and this kernel publishes neither.</string>
+
+    <string name="root_needed">Root access is needed to read these files on this ROM, and it was not granted.</string>
+    <string name="refresh">Refresh</string>
+</resources>

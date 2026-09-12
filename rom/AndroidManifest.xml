@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<!-- The build that ships inside the ROM. A launcher entry like any other app;
+     what it gets from being in the image is the platform signature and the
+     system shared user id, which is what lets it read the nodes itself once
+     the device tree has labelled them for system_app. No root involved. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.witaqua.qcom.pd_info"
+    android:versionCode="1"
+    android:versionName="1.0"
+    android:sharedUserId="android.uid.system">
+
+    <application
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PdInfo">
+        <activity
+            android:name="org.witaqua.qcom.pd_info.ui.PdInfoActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
