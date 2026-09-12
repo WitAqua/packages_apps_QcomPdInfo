@@ -32,6 +32,7 @@ opened:
 | Shared user id | `android.uid.system` | none |
 | Application id | `org.witaqua.qcom.pd_info` | `org.witaqua.qcom.pd_info.root` |
 | Reads by | opening the files | a root shell |
+| Which object is in use | only where the kernel publishes it | always |
 
 Neither the kernel interface nor the way in is chosen at build time. Both
 follow what can actually be read - see `core/src/.../source/Sources.kt`.

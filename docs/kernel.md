@@ -87,9 +87,10 @@ Mainline carries quirks in the other direction for the same family
 not put it. `UCSI_GET_CONNECTOR_STATUS` carries the request object, which is
 where the driver gets it from too, so both halves are recoverable.
 
-This is what the app does when it finds the class registered and empty, and it
-is what the KernelSU module exists to enable - debugfs is not mounted by
-default, and for good reason. See
+The app uses both: the object lists only where the class has none, and the
+connector status whenever it can, because the class never carries the request.
+This is what the module exists to enable - debugfs is not mounted by default,
+and for good reason. See
 [Qcom-PD-Info-Module](https://github.com/WitAqua-tools/Qcom-PD-Info-Module).
 
 It needs root, and an SELinux context that may reach debugfs - the shell's may
@@ -117,10 +118,22 @@ For a ROM that builds its own kernel, dropping the gate is the whole change:
 `ucsi_read_pdos()` already handles the command failing, so a firmware that
 genuinely cannot answer costs one refused command rather than a broken port.
 
-With this in place the class populates normally, the app needs no root and no
-debugfs, and every other reader of the class benefits too. A quirk flag - the
-inverse of `UCSI_NO_PARTNER_PDOS` - is the shape this should take upstream
-rather than an unconditional removal.
+With this in place the object lists populate normally and every other reader of
+the class benefits too. It also fixes UCSI's own power supply: `voltage_now`
+reads `src_pdos[index - 1]`, which the same check was leaving empty, so it had
+been reporting zero.
+
+A quirk flag - the inverse of `UCSI_NO_PARTNER_PDOS` - is the shape this should
+take upstream rather than an unconditional removal.
+
+**It does not get you the request object.** The class has no attribute for it at
+any kernel version, and nothing else exposes `con->rdo` either; the only other
+place it appears is `GET_CONNECTOR_STATUS`. So a patched kernel publishes the
+whole menu and still cannot say which line was ordered, which is why the app
+asks over debugfs whenever it can rather than only when the lists are missing.
+
+That makes the request a root-only figure on the upstream path. A board with
+qualcomm's own driver has it in sysfs and needs none of this.
 
 ### If the firmware really cannot answer GET_PDOS
 
@@ -129,6 +142,32 @@ message. `ucsi.c` already has `ucsi_get_pd_message()` for Discover Identity, so
 the plumbing exists; requesting the capabilities message and registering what
 comes back would be the spec-sanctioned route. Not needed on any platform
 checked so far.
+
+## Where this should end up
+
+Two kernel changes would between them remove the need for debugfs entirely, and
+neither is large. Noted here as the intended direction rather than as work
+done.
+
+**Drop the capability gate.** The diff above. Gets the object lists onto every
+reader of the class, and fixes UCSI's own `voltage_now` while it is there.
+
+**Publish the request object.** `con->rdo` is already in the driver, and
+`ucsi_psy.c` reads it - what is missing is anywhere to see it from userspace.
+An attribute on the connector, or better a `request` on the
+`usb_power_delivery` device beside the capabilities it was made against, would
+close the one gap that no amount of policy can. It is a real omission rather
+than a quirk: `drivers/usb/typec/pd.c` has nothing for a request at any kernel
+version, so TCPM ports lack it for the same reason UCSI ones do. Worth putting
+upstream.
+
+With both, the object lists and the request come out of sysfs, the app needs
+neither root nor debugfs on the upstream path, and the module has nothing left
+to mount.
+
+Not urgent for the boards WitAqua builds kernels for, which have qualcomm's own
+driver and therefore both already. The gain is on the newer parts, where the
+kernel is somebody else's.
 
 ## What cannot be recovered
 

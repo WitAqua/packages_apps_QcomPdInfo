@@ -10,7 +10,7 @@ import org.witaqua.qcom.pd_info.Platform
 import org.witaqua.qcom.pd_info.io.DirectSysfs
 import org.witaqua.qcom.pd_info.io.RootSysfs
 import org.witaqua.qcom.pd_info.io.Sysfs
-import org.witaqua.qcom.pd_info.model.EmptyReason
+import org.witaqua.qcom.pd_info.model.Origin
 import org.witaqua.qcom.pd_info.model.Snapshot
 
 /**
@@ -99,27 +99,49 @@ object Sources {
     }
 
     /**
-     * Fills in what the class left out, by asking the policy manager directly.
+     * Fills in what the upstream class leaves out, by asking the policy
+     * manager directly.
      *
-     * Only reached when the interface is there and empty, which is a platform
-     * whose firmware does not report that it can list its objects - and which
-     * may well answer if asked anyway. Everything else is left alone: a source
-     * that answered properly has nothing to add, and putting commands to the
-     * policy manager is not something to do speculatively.
+     * Two different gaps, and they close differently:
+     *
+     *   The object lists are missing only on a platform whose firmware does
+     *   not report that it can list them. Dropping that check in the kernel
+     *   fixes it for everyone - see the app's docs/kernel.md - after which
+     *   there is nothing to ask for here.
+     *
+     *   The request object is missing always. The class has no attribute for
+     *   it at any kernel version, and the only other place it appears is the
+     *   connector status. So this is asked for whenever it can be, not only
+     *   when the lists are absent: a patched kernel would otherwise publish
+     *   the whole menu and never say which line was ordered.
+     *
+     * Qualcomm's own driver publishes both, so a board with it comes through
+     * here untouched.
+     *
+     * In practice this makes the request a root-only figure on the upstream
+     * path, since debugfs is what it comes from - which is a split the builds
+     * already have rather than one this introduces.
      */
     private fun fillIn(sysfs: Sysfs, snapshot: Snapshot): Snapshot {
-        if (snapshot.emptyReason != EmptyReason.NO_CAPABILITIES_REGISTERED) {
-            return snapshot
-        }
-        if (!UcsiDebugfs.present(sysfs)) {
+        if (snapshot.origin != Origin.UPSTREAM || !UcsiDebugfs.present(sysfs)) {
             return snapshot
         }
 
-        val capabilities = UcsiDebugfs.capabilities(sysfs)
+        /*
+         * Whatever the class managed, else ask. Asking is a command to the
+         * policy manager, so it is not done where reading a directory would
+         * have answered.
+         */
+        val capabilities = snapshot.ports
+            .firstOrNull { it.capabilities.isNotEmpty() }
+            ?.capabilities
+            ?: UcsiDebugfs.capabilities(sysfs)
+
         if (capabilities.isEmpty()) {
             return snapshot
         }
 
+        /* Reading the request needs the capability it was made against. */
         val request = UcsiDebugfs.request(sysfs, capabilities)
 
         return snapshot.copy(
