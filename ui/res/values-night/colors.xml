@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<!-- The same hues, with the relationship inverted: the shading goes darker
+     than the page rather than lighter, and the accent is what carries. -->
+<resources>
+    <color name="header_background">#FF00363D</color>
+    <color name="header_foreground">#FFD1FCFC</color>
+
+    <color name="row_background_odd">#FF121212</color>
+    <color name="row_background_even">#FF16201F</color>
+    <color name="section_background">#FF0B2A28</color>
+    <color name="section_foreground">#FF00EDED</color>
+</resources>

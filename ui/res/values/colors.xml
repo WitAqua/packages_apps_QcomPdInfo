@@ -4,6 +4,27 @@
 
      SPDX-License-Identifier: Apache-2.0
 -->
+<!-- WitAqua's own colours, taken from logo_witaqua.xml in Settings: the
+     accent is #00C8FF and the mark runs #00CDAD -> #00EDED -> #D1FCFC. The
+     aqua end of that is bright enough to need a darker relative behind white
+     text, which is what header_background is. -->
 <resources>
-    <color name="ic_launcher_background">#1B6C4A</color>
+    <color name="witaqua_accent">#FF00C8FF</color>
+    <color name="witaqua_teal">#FF00CDAD</color>
+    <color name="witaqua_cyan">#FF00EDED</color>
+
+    <!-- The band at the top. The logo's aqua at full brightness leaves white
+         text barely legible, so this is the same hue taken down until it
+         carries text. -->
+    <color name="header_background">#FF00707E</color>
+    <color name="header_foreground">#FFFFFFFF</color>
+
+    <!-- Every other row shaded, which is what makes a long table readable
+         without drawing a rule between each pair. -->
+    <color name="row_background_odd">#FFFFFFFF</color>
+    <color name="row_background_even">#FFEFFAFB</color>
+    <color name="section_background">#FFD1FCFC</color>
+    <color name="section_foreground">#FF006B62</color>
+
+    <color name="ic_launcher_background">#FF00707E</color>
 </resources>

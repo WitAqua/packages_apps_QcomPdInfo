@@ -102,5 +102,4 @@ kotlin {
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("androidx.preference:preference:1.2.1")
 }
