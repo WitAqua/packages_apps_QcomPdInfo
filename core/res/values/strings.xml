@@ -9,6 +9,16 @@
     <string name="pd_title">USB Power Delivery</string>
     <string name="pd_summary">What the charger offers and what is being drawn</string>
 
+<<<<<<< HEAD   (62aa322d9231827f6dacaec4770f23c15243eef1 Ask for the request object whenever it can be had)
+=======
+    <string name="headline_nothing">Nothing attached</string>
+    <string name="headline_at">%1$sV at %2$sA</string>
+    <string name="section_state">State</string>
+    <string name="label_port">Port</string>
+    <string name="label_state">Cable</string>
+    <string name="state_detached">Nothing attached</string>
+    <string name="note_detached">No cable, so there is nothing to report yet. Plug a charger in and this fills itself in - what it offered, what was taken, and what is arriving.</string>
+>>>>>>> CHANGE (f4843a266bf7299a8e44eb1adbd296611ca22167 Say when nothing is attached)
     <string name="section_port">Port <xliff:g id="name" example="port0">%1$s</xliff:g></string>
     <string name="section_port_unnamed">Port</string>
     <string name="section_advertised">Offered by the charger</string>

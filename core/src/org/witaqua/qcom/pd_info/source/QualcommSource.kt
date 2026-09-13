@@ -6,6 +6,7 @@
 package org.witaqua.qcom.pd_info.source
 
 import org.witaqua.qcom.pd_info.io.Sysfs
+import org.witaqua.qcom.pd_info.model.EmptyReason
 import org.witaqua.qcom.pd_info.model.Origin
 import org.witaqua.qcom.pd_info.model.Port
 import org.witaqua.qcom.pd_info.model.PowerDeliveryObject
@@ -67,6 +68,13 @@ object QualcommSource : PdSource {
                 }
 
             Port(
+                /*
+                 * This driver keeps its nodes whether or not anything is
+                 * plugged in, and says so in the power role: neither end of a
+                 * cable that is not there has one.
+                 */
+                attached = values["$directory/current_pr"]
+                    ?.let { it != "none" } ?: false,
                 name = name,
                 powerRole = values["$directory/current_pr"],
                 dataRole = values["$directory/current_dr"],
@@ -76,6 +84,18 @@ object QualcommSource : PdSource {
             )
         }
 
-        return if (ports.isEmpty()) null else Snapshot(Origin.QUALCOMM, ports)
+        if (ports.isEmpty()) {
+            return null
+        }
+
+        return Snapshot(
+            origin = Origin.QUALCOMM,
+            ports = ports,
+            emptyReason = if (ports.none { it.attached }) {
+                EmptyReason.NOTHING_ATTACHED
+            } else {
+                null
+            },
+        )
     }
 }

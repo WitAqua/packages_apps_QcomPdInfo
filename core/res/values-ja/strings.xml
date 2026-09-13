@@ -9,6 +9,16 @@
     <string name="pd_title">USB Power Delivery</string>
     <string name="pd_summary">充電器が提示した電力と、実際に引いている電力</string>
 
+<<<<<<< HEAD   (62aa322d9231827f6dacaec4770f23c15243eef1 Ask for the request object whenever it can be had)
+=======
+    <string name="headline_nothing">未接続</string>
+    <string name="headline_at">%1$sV / %2$sA</string>
+    <string name="section_state">状態</string>
+    <string name="label_port">ポート</string>
+    <string name="label_state">ケーブル</string>
+    <string name="state_detached">未接続</string>
+    <string name="note_detached">ケーブルが繋がっていないため、まだ報告できるものがありません。充電器を挿すと、提示された電力・実際に要求したもの・届いている値が自動で埋まります。</string>
+>>>>>>> CHANGE (f4843a266bf7299a8e44eb1adbd296611ca22167 Say when nothing is attached)
     <string name="section_port">ポート <xliff:g id="name" example="port0">%1$s</xliff:g></string>
     <string name="section_port_unnamed">ポート</string>
     <string name="section_advertised">充電器が提示した電力</string>
