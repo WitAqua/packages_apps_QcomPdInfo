@@ -9,6 +9,8 @@
     <string name="pd_title">USB Power Delivery</string>
     <string name="pd_summary">充電器が提示した電力と、実際に引いている電力</string>
 
+    <string name="headline_nothing">未接続</string>
+    <string name="headline_at">%1$sV / %2$sA</string>
     <string name="section_port">ポート <xliff:g id="name" example="port0">%1$s</xliff:g></string>
     <string name="section_port_unnamed">ポート</string>
     <string name="section_advertised">充電器が提示した電力</string>

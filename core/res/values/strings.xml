@@ -9,6 +9,8 @@
     <string name="pd_title">USB Power Delivery</string>
     <string name="pd_summary">What the charger offers and what is being drawn</string>
 
+    <string name="headline_nothing">Nothing attached</string>
+    <string name="headline_at">%1$sV at %2$sA</string>
     <string name="section_port">Port <xliff:g id="name" example="port0">%1$s</xliff:g></string>
     <string name="section_port_unnamed">Port</string>
     <string name="section_advertised">Offered by the charger</string>

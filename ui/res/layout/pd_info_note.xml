@@ -4,15 +4,11 @@
 
      SPDX-License-Identifier: Apache-2.0
 -->
-<!-- A note explains the rows above it rather than being one of them, so it is
-     a paragraph with no title and no room reserved for a widget. -->
+<!-- A note explains the rows above it rather than being one of them, so it
+     spans the table rather than taking a column. -->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@android:id/summary"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="16dp"
-    android:textAppearance="?android:attr/textAppearanceSmall"
-    android:textColor="?android:attr/textColorSecondary" />
+    android:padding="@dimen/note_padding"
+    android:textColor="?android:attr/textColorSecondary"
+    android:textSize="12sp" />
