@@ -46,6 +46,57 @@ class Renderer(private val context: Context) {
         }
     }
 
+    /**
+     * One line for the band at the top: what is on the other end of the
+     * cable, and at what. It is the answer somebody opened this for, and the
+     * table below is the working.
+     */
+    fun headline(snapshot: Snapshot?): String {
+        val port = snapshot?.ports?.firstOrNull()
+            ?: return context.getString(R.string.headline_nothing)
+
+        /*
+         * The request says what was taken; where it is out of reach the
+         * measurement is the nearest thing to it.
+         */
+        val taken = port.request?.let { request ->
+            when (request) {
+                is Request.Programmable -> context.getString(
+                    R.string.headline_at,
+                    volts(request.millivolts),
+                    amps(request.operatingMilliamps),
+                )
+
+                is Request.Current -> port.capabilities
+                    .filterIsInstance<SourceCapability.Fixed>()
+                    .firstOrNull { it.position == request.objectPosition }
+                    ?.let {
+                        context.getString(
+                            R.string.headline_at,
+                            volts(it.millivolts),
+                            amps(request.operatingMilliamps),
+                        )
+                    }
+
+                else -> null
+            }
+        } ?: snapshot.measured?.let { measured ->
+            val millivolts = measured.millivolts ?: return@let null
+            context.getString(
+                R.string.headline_at,
+                volts(millivolts),
+                amps(measured.milliamps ?: 0),
+            )
+        }
+
+        val protocol = port.protocol ?: port.contract?.let { word(it) }
+
+        return listOfNotNull(protocol, taken)
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(context.getString(R.string.list_separator))
+            ?: context.getString(R.string.headline_nothing)
+    }
+
     private fun portSection(port: Port) = Section(
         title = port.name
             ?.let { context.getString(R.string.section_port, it) }

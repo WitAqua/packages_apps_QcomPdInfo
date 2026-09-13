@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/section_background"
+    android:paddingStart="@dimen/section_padding_horizontal"
+    android:paddingTop="@dimen/section_padding_vertical"
+    android:paddingEnd="@dimen/section_padding_horizontal"
+    android:paddingBottom="@dimen/section_padding_vertical"
+    android:textColor="@color/section_foreground"
+    android:textSize="14sp"
+    android:textStyle="bold" />

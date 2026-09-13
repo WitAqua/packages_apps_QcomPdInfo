@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Copyright (C) 2026 The WitAqua Project
+
+     SPDX-License-Identifier: Apache-2.0
+-->
+<!-- A table of readings wants to be dense: the point is to take the whole of
+     it in at once, which a list of cards with a row of padding each does not
+     let you do. These follow Device Info HW, which gets that right. -->
+<resources>
+    <dimen name="table_margin_horizontal">10dp</dimen>
+    <dimen name="row_padding_horizontal">3dp</dimen>
+    <dimen name="row_padding_vertical">2dp</dimen>
+    <dimen name="section_padding_horizontal">8dp</dimen>
+    <dimen name="section_padding_vertical">6dp</dimen>
+    <dimen name="header_padding">10dp</dimen>
+    <dimen name="header_icon_size">34dp</dimen>
+    <dimen name="note_padding">10dp</dimen>
+</resources>
