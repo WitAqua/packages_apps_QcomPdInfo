@@ -71,6 +71,7 @@ object UpstreamSource : PdSource {
             /* No type-C class to read, so report the port without naming it. */
             listOf(
                 Port(
+                    attached = capabilities.isNotEmpty(),
                     name = null,
                     capabilities = capabilities,
                     protocol = contract.protocol,
@@ -79,14 +80,22 @@ object UpstreamSource : PdSource {
             )
         }
 
+        /*
+         * A partner device is what the class grows when something is plugged
+         * in and drops when it comes out, so its absence is the difference
+         * between "nothing attached" and "attached, and the objects were never
+         * read" - which from the capabilities alone look the same.
+         */
+        val attached = ports.any { it.attached }
+
         return Snapshot(
             origin = Origin.UPSTREAM,
             ports = ports,
             measured = measured(sysfs),
-            emptyReason = if (capabilities.isEmpty()) {
-                EmptyReason.NO_CAPABILITIES_REGISTERED
-            } else {
-                null
+            emptyReason = when {
+                capabilities.isNotEmpty() -> null
+                !attached -> EmptyReason.NOTHING_ATTACHED
+                else -> EmptyReason.NO_CAPABILITIES_REGISTERED
             },
         )
     }
@@ -141,6 +150,7 @@ object UpstreamSource : PdSource {
         )
 
         return Port(
+            attached = sysfs.list(TYPEC).contains("$name$PARTNER_SUFFIX"),
             name = name,
             powerRole = values["$directory/power_role"]?.activeValue(),
             dataRole = values["$directory/data_role"]?.activeValue(),
