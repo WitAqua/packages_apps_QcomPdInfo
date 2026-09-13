@@ -40,14 +40,29 @@ enum class Origin {
 
 enum class EmptyReason {
     /**
-     * The upstream devices are registered but hold no capabilities. With UCSI
-     * that is what happens when the firmware does not report PDO details, or
-     * when the platform carries the quirk that skips the partner's.
+     * Nothing is plugged in, so there is nothing to have read. Kept apart from
+     * the reason below because they look identical from the class - no
+     * capabilities either way - and saying the wrong one is worse than saying
+     * nothing: one is a cable, the other is a platform.
+     */
+    NOTHING_ATTACHED,
+
+    /**
+     * Something is attached and the upstream devices are registered, but they
+     * hold no capabilities. With UCSI that is what happens when the firmware
+     * does not report PDO details, or when the platform carries the quirk that
+     * skips the partner's.
      */
     NO_CAPABILITIES_REGISTERED,
 }
 
 data class Port(
+    /**
+     * Whether anything is on the other end. The type-C class drops the partner
+     * device when the cable comes out, which is the plainest signal there is.
+     */
+    val attached: Boolean = true,
+
     /**
      * The type-C port this belongs to, or null when the class that names it
      * could not be read - which happens, and is no reason to drop the rest.
