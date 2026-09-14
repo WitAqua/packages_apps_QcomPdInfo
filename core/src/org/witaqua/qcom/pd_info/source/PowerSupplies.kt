@@ -7,6 +7,7 @@ package org.witaqua.qcom.pd_info.source
 
 import org.witaqua.qcom.pd_info.io.Sysfs
 import org.witaqua.qcom.pd_info.model.Measured
+import org.witaqua.qcom.pd_info.model.Port
 
 /** Both readers below live in the power supply class. */
 internal const val POWER_SUPPLY = "/sys/class/power_supply"
@@ -27,42 +28,42 @@ internal object UcsiSupply {
     /** ucsi-source-psy-<parent device><connector>, one per connector. */
     private const val PREFIX = "ucsi-source-psy"
 
-    fun name(sysfs: Sysfs): String? =
-        sysfs.list(POWER_SUPPLY).firstOrNull { it.startsWith(PREFIX) }
+    /**
+     * The supply belonging to one connector. There is one per connector and the
+     * name ends in its number, so on a board with two ports taking whichever
+     * sorts first means reporting the wrong port's contract - which on the
+     * tablet this was written against is a data cable's 5V where the charger
+     * had negotiated 9V. Asked without a connector, or where the board has only
+     * one, the single answer is the right one.
+     */
+    fun name(sysfs: Sysfs, connector: Int? = null): String? {
+        val supplies = sysfs.list(POWER_SUPPLY).filter { it.startsWith(PREFIX) }
+        if (connector == null || supplies.size < 2) {
+            return supplies.firstOrNull()
+        }
+        return supplies.firstOrNull { number(it) == connector }
+    }
+
+    /** The trailing digits of the name, which are the connector it is for. */
+    private fun number(supply: String) = supply.takeLastWhile { it.isDigit() }.toIntOrNull()
 
     /** Whether a supply belongs to UCSI, so the charger's reader can skip it. */
     fun owns(supply: String) = supply.startsWith(PREFIX)
 
-    /**
-     * What can be said about the contract, which on a qualcomm board is two
-     * readers' worth: the charger firmware names the adapter and this supply
-     * carries the figures. Either can be absent - the charger's class is not
-     * on a board from anyone else, and the supply is not there without UCSI -
-     * so the answer is whatever the two of them managed.
-     */
-    fun contract(sysfs: Sysfs): Contract {
-        /*
-         * The charger's word for the adapter first, because UCSI's is always
-         * just PD and this one separates PPS from fixed - see [QtiCharger].
-         */
-        val real = QtiCharger.realType(sysfs)
-        val charger = Contract(
-            protocol = real,
-            programmable = QtiCharger.programmable(real),
-        )
-
-        val directory = "$POWER_SUPPLY/${name(sysfs) ?: return charger}"
+    /** What this supply says about one connector's contract. */
+    fun contract(sysfs: Sysfs, connector: Int? = null): Contract {
+        val directory = "$POWER_SUPPLY/${name(sysfs, connector) ?: return Contract()}"
 
         val values = sysfs.read(
             listOf("online", "usb_type", "voltage_now", "current_now").map { "$directory/$it" }
         )
         if (values["$directory/online"] != "1") {
-            return charger
+            return Contract()
         }
 
-        return charger.copy(
+        return Contract(
             online = true,
-            protocol = real ?: values["$directory/usb_type"]?.activeValue(),
+            protocol = values["$directory/usb_type"]?.activeValue(),
             millivolts = values["$directory/voltage_now"].milli(),
             milliamps = values["$directory/current_now"].milli(),
         )
@@ -78,9 +79,10 @@ internal object UcsiSupply {
 }
 
 /**
- * What the platform says the contract is: UCSI's figures for it, and the
- * charger's name for what is on the other end. Absent throughout when there is
- * no contract, and in whichever part the board does not publish.
+ * What the platform says the contract is: UCSI's figures for it, and where
+ * [withCharger] could be applied, the charger's name for what is on the other
+ * end. Absent throughout when there is no contract, and in whichever part the
+ * board does not publish.
  */
 internal data class Contract(
     val online: Boolean = false,
@@ -96,6 +98,36 @@ internal data class Contract(
     val millivolts: Int? = null,
     val milliamps: Int? = null,
 )
+
+/**
+ * Whether power delivery is what is in force on this port. UCSI's supply
+ * answers for a port either way - against a plain type-C cable it reads back
+ * the standard's own 5V and no current - so without asking, a cable to a
+ * laptop would be reported as a negotiation. The class says it one way and the
+ * supply the other.
+ */
+internal fun Port.inPowerDelivery(): Boolean =
+    contract == PD_OPERATION_MODE || protocol?.startsWith("PD") == true
+
+private const val PD_OPERATION_MODE = "usb_power_delivery"
+
+/**
+ * The charger firmware's word for the adapter, laid over what UCSI said - but
+ * only on a board with one port. That reading is a single view of "the"
+ * charger with no connector in it, so where there are two ports there is
+ * nothing to say which one it is about: the tablet this was written against
+ * reports SDP for the data cable in one port while the other holds a 9V
+ * contract. Better to leave the kind of contract unknown than to attach it to
+ * the wrong port. See [QtiCharger].
+ */
+internal fun Contract.withCharger(sysfs: Sysfs, ports: Int): Contract {
+    if (ports != 1) {
+        return this
+    }
+
+    val real = QtiCharger.realType(sysfs) ?: return this
+    return copy(protocol = real, programmable = QtiCharger.programmable(real))
+}
 
 /*
  * The vendor's charger supply, which measures the port rather than saying what
