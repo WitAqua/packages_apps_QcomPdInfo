@@ -89,10 +89,18 @@ object UpstreamSource : PdSource {
         val contract = UcsiSupply.contract(sysfs, connector).withCharger(sysfs, ports)
         val partner = TypeCClass.partnerDevice(sysfs, name)
 
-        val capabilities = partner?.let { capabilities(sysfs, it) } ?: emptyList()
+        val capabilities = partner?.let { capabilities(sysfs, it, Role.SOURCE) } ?: emptyList()
 
         val port = TypeCClass.port(sysfs, name).copy(
             capabilities = capabilities,
+            /*
+             * What this port asks for, which is its own rather than the
+             * cable's: on a board with two of them they need not match, and it
+             * is the one thing the class says about a port with nothing in it.
+             */
+            sinkCapabilities = TypeCClass.portDevice(sysfs, name)
+                ?.let { capabilities(sysfs, it, Role.SINK) }
+                ?: emptyList(),
             protocol = contract.protocol,
             /*
              * A menu with no programmable supply on it cannot have been
@@ -135,11 +143,30 @@ object UpstreamSource : PdSource {
             sysfs.list("$PD/$name/source-capabilities").isNotEmpty()
         }
 
-        return owner?.let { capabilities(sysfs, it) } ?: emptyList()
+        return owner?.let { capabilities(sysfs, it, Role.SOURCE) } ?: emptyList()
     }
 
-    private fun capabilities(sysfs: Sysfs, device: String): List<SourceCapability> {
-        val directory = "$PD/$device/source-capabilities"
+    /*
+     * Which way round the objects are read. They are the same objects either
+     * way; what differs is the directory they sit in and whether the current a
+     * fixed or variable supply quotes is the most it can give or the amount the
+     * other end means to draw.
+     */
+    private enum class Role(
+        val directory: String,
+        val current: String,
+        val power: String,
+    ) {
+        SOURCE("source-capabilities", "maximum_current", "maximum_power"),
+        SINK("sink-capabilities", "operational_current", "operational_power"),
+    }
+
+    private fun capabilities(
+        sysfs: Sysfs,
+        device: String,
+        role: Role,
+    ): List<SourceCapability> {
+        val directory = "$PD/$device/${role.directory}"
 
         return sysfs.list(directory).mapNotNull { entry ->
             /* Named "<position>:<type>", which is the whole of the ordering. */
@@ -147,9 +174,9 @@ object UpstreamSource : PdSource {
             val objectDirectory = "$directory/$entry"
 
             when (entry.substringAfter(':')) {
-                "fixed_supply" -> fixed(sysfs, objectDirectory, position)
-                "battery" -> battery(sysfs, objectDirectory, position)
-                "variable_supply" -> variable(sysfs, objectDirectory, position)
+                "fixed_supply" -> fixed(sysfs, objectDirectory, position, role)
+                "battery" -> battery(sysfs, objectDirectory, position, role)
+                "variable_supply" -> variable(sysfs, objectDirectory, position, role)
                 "programmable_supply" -> programmable(sysfs, objectDirectory, position)
                 "spr_adjustable_voltage_supply" -> adjustable(sysfs, objectDirectory, position)
                 else -> null
@@ -157,10 +184,15 @@ object UpstreamSource : PdSource {
         }.sortedBy { it.position }
     }
 
-    private fun fixed(sysfs: Sysfs, directory: String, position: Int): SourceCapability? {
+    private fun fixed(
+        sysfs: Sysfs,
+        directory: String,
+        position: Int,
+        role: Role,
+    ): SourceCapability? {
         val values = sysfs.read(
             FIXED_FLAGS.map { "$directory/$it" } +
-                listOf("$directory/voltage", "$directory/maximum_current")
+                listOf("$directory/voltage", "$directory/${role.current}")
         )
         val millivolts = values["$directory/voltage"].quantity() ?: return null
 
@@ -184,32 +216,42 @@ object UpstreamSource : PdSource {
         return SourceCapability.Fixed(
             position = position,
             millivolts = millivolts,
-            maxMilliamps = values["$directory/maximum_current"].quantity() ?: 0,
+            maxMilliamps = values["$directory/${role.current}"].quantity() ?: 0,
             flags = flags,
         )
     }
 
-    private fun battery(sysfs: Sysfs, directory: String, position: Int): SourceCapability? {
+    private fun battery(
+        sysfs: Sysfs,
+        directory: String,
+        position: Int,
+        role: Role,
+    ): SourceCapability? {
         val values = sysfs.read(
-            listOf("minimum_voltage", "maximum_voltage", "maximum_power").map { "$directory/$it" }
+            listOf("minimum_voltage", "maximum_voltage", role.power).map { "$directory/$it" }
         )
         return SourceCapability.Battery(
             position = position,
             minMillivolts = values["$directory/minimum_voltage"].quantity() ?: return null,
             maxMillivolts = values["$directory/maximum_voltage"].quantity() ?: return null,
-            maxMilliwatts = values["$directory/maximum_power"].quantity() ?: 0,
+            maxMilliwatts = values["$directory/${role.power}"].quantity() ?: 0,
         )
     }
 
-    private fun variable(sysfs: Sysfs, directory: String, position: Int): SourceCapability? {
+    private fun variable(
+        sysfs: Sysfs,
+        directory: String,
+        position: Int,
+        role: Role,
+    ): SourceCapability? {
         val values = sysfs.read(
-            listOf("minimum_voltage", "maximum_voltage", "maximum_current").map { "$directory/$it" }
+            listOf("minimum_voltage", "maximum_voltage", role.current).map { "$directory/$it" }
         )
         return SourceCapability.Variable(
             position = position,
             minMillivolts = values["$directory/minimum_voltage"].quantity() ?: return null,
             maxMillivolts = values["$directory/maximum_voltage"].quantity() ?: return null,
-            maxMilliamps = values["$directory/maximum_current"].quantity() ?: 0,
+            maxMilliamps = values["$directory/${role.current}"].quantity() ?: 0,
         )
     }
 

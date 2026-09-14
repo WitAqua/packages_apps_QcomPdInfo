@@ -20,6 +20,8 @@
     <string name="section_port_unnamed">ポート</string>
     <string name="section_advertised">充電器が提示した電力</string>
     <string name="section_in_use">使用中</string>
+    <string name="section_requested">このポートが要求する電力</string>
+    <string name="section_requested_port"><xliff:g id="name" example="port0">%1$s</xliff:g> が要求する電力</string>
     <string name="section_measured"><xliff:g id="supply" example="usb">%1$s</xliff:g> での実測</string>
     <string name="section_why_empty">一覧が出ない理由</string>
     <string name="section_unavailable">取得できません</string>
