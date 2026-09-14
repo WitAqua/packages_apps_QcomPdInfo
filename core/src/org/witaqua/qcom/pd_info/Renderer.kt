@@ -320,25 +320,48 @@ class Renderer(private val context: Context) {
     )
 
     /**
-     * Nothing on the other end. One row saying which port, one saying what it
-     * would do when something arrives, and a line to explain the emptiness so
-     * that it does not read as a failure to find anything.
+     * Nothing on the other end of anything. A row per port, one saying what
+     * they would do when something arrives, and a line to explain the emptiness
+     * so that it does not read as a failure to find anything.
+     *
+     * Every port, not the first: the class knows them whether or not a cable is
+     * in one, so a board with two sockets should not look like it has one just
+     * because both are free.
      */
     private fun detached(snapshot: Snapshot) = Section(
         title = context.getString(R.string.section_state),
         rows = buildList {
-            snapshot.ports.firstOrNull()?.name?.let {
-                add(Row(context.getString(R.string.label_port), it))
-            }
-            add(
-                Row(
-                    context.getString(R.string.label_state),
-                    context.getString(R.string.state_detached),
+            if (snapshot.ports.size > 1) {
+                snapshot.ports.forEach { port ->
+                    add(
+                        Row(
+                            portTitle(port),
+                            context.getString(R.string.state_detached),
+                        )
+                    )
+                }
+            } else {
+                snapshot.ports.firstOrNull()?.name?.let {
+                    add(Row(context.getString(R.string.label_port), it))
+                }
+                add(
+                    Row(
+                        context.getString(R.string.label_state),
+                        context.getString(R.string.state_detached),
+                    )
                 )
-            )
-            snapshot.ports.firstOrNull()?.pdRevision?.let {
-                add(Row(context.getString(R.string.label_pd_revision), it))
             }
+
+            /*
+             * A property of the port rather than of a contract, so it stays -
+             * once, where the ports agree, and not at all where they do not
+             * rather than saying it twice about nothing.
+             */
+            snapshot.ports.mapNotNull { it.pdRevision }
+                .distinct()
+                .singleOrNull()
+                ?.takeIf { snapshot.ports.all { port -> port.pdRevision != null } }
+                ?.let { add(Row(context.getString(R.string.label_pd_revision), it)) }
         },
         note = context.getString(R.string.note_detached),
     )
