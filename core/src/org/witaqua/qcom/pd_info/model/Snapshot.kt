@@ -36,6 +36,12 @@ enum class Origin {
 
     /** The upstream class: objects already in decimal, and no request. */
     UPSTREAM,
+
+    /**
+     * The type-C class and UCSI's power supply, which between them describe
+     * the contract and carry no object list at all.
+     */
+    UCSI_SUPPLY,
 }
 
 enum class EmptyReason {
@@ -54,6 +60,15 @@ enum class EmptyReason {
      * skips the partner's.
      */
     NO_CAPABILITIES_REGISTERED,
+
+    /**
+     * Nothing on this kernel publishes an object list: no qualcomm driver, no
+     * upstream class, no UCSI debugfs. Unlike the reason above the driver did
+     * read the objects - there is only nowhere to read them back out of, so
+     * what UCSI derived from them is all there is. See
+     * docs/5.10_xiaomi-sm8450.md for the kernel this was written for.
+     */
+    NO_OBJECT_INTERFACE,
 }
 
 data class Port(
@@ -88,13 +103,29 @@ data class Port(
     /**
      * The negotiated current when the request object itself is out of reach.
      * UCSI's power supply derives this from the request, so it is an agreed
-     * figure rather than a measurement, and it arrives without the voltage
-     * that would complete it.
+     * figure rather than a measurement.
      */
     val negotiatedMilliamps: Int? = null,
 
+    /**
+     * The negotiated voltage, likewise - UCSI takes it from the source object
+     * the request names, which it can only do where the objects were read. It
+     * reads the fixed-supply field of that object whatever type it is, so it
+     * comes with the same caveat as the current beside it and is shown with
+     * one.
+     */
+    val negotiatedMillivolts: Int? = null,
+
     /** "PD", "PD_PPS", "C", "BC1.2" - the protocol actually in force. */
     val protocol: String? = null,
+
+    /**
+     * Whether the contract is against a programmable supply, on a source that
+     * has no object list to say so itself. Null where nothing on the board
+     * publishes it, which is why this is not a plain boolean: it separates "a
+     * fixed contract, so the figures above hold" from "nobody said".
+     */
+    val programmable: Boolean? = null,
 )
 
 data class Measured(

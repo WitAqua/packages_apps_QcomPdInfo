@@ -14,6 +14,15 @@ interface PdSource {
     fun present(sysfs: Sysfs): Boolean
 
     fun read(sysfs: Sysfs): Snapshot?
+
+    /**
+     * Whether this one can produce the charger's object list. Only a source
+     * that can is allowed to settle the way in: one that reports the contract
+     * and nothing else being readable without help is no reason to stay out of
+     * a root shell that would have got the list. See [Sources.sysfs].
+     */
+    val publishesCapabilities: Boolean
+        get() = true
 }
 
 /*

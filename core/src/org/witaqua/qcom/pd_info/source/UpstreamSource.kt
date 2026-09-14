@@ -7,7 +7,6 @@ package org.witaqua.qcom.pd_info.source
 
 import org.witaqua.qcom.pd_info.io.Sysfs
 import org.witaqua.qcom.pd_info.model.EmptyReason
-import org.witaqua.qcom.pd_info.model.Measured
 import org.witaqua.qcom.pd_info.model.Origin
 import org.witaqua.qcom.pd_info.model.Port
 import org.witaqua.qcom.pd_info.model.Snapshot
@@ -15,7 +14,7 @@ import org.witaqua.qcom.pd_info.model.SourceCapability
 import org.witaqua.qcom.pd_info.model.SourceFlags
 
 /*
- * The upstream interface, drivers/usb/typec/pd.c, from Linux 5.18. Each data
+ * The upstream interface, drivers/usb/typec/pd.c, from android14-6.1. Each data
  * object is a directory of decimal fields rather than one word, so there is
  * nothing to decode here - only to read in the right order.
  *
@@ -28,8 +27,6 @@ import org.witaqua.qcom.pd_info.model.SourceFlags
  */
 object UpstreamSource : PdSource {
     private const val PD = "/sys/class/usb_power_delivery"
-    private const val TYPEC = "/sys/class/typec"
-    private const val SUPPLY = "/sys/class/power_supply"
 
     override fun present(sysfs: Sysfs) = sysfs.list(PD).isNotEmpty()
 
@@ -49,10 +46,11 @@ object UpstreamSource : PdSource {
          */
         val partnerDevice = devices.firstOrNull { name ->
             sysfs.read("$PD/$name/device/supports_usb_power_delivery") != null
-        } ?: sysfs.list(TYPEC)
-            .filter { it.endsWith(PARTNER_SUFFIX) }
+        } ?: sysfs.list(TypeCClass.DIRECTORY)
+            .filter { it.endsWith(TypeCClass.PARTNER_SUFFIX) }
             .firstNotNullOfOrNull { partner ->
-                sysfs.read("$TYPEC/$partner/usb_power_delivery")?.substringAfterLast('/')
+                sysfs.read("${TypeCClass.DIRECTORY}/$partner/usb_power_delivery")
+                    ?.substringAfterLast('/')
             }
 
         val capabilities = partnerDevice?.let { capabilities(sysfs, it) } ?: emptyList()
@@ -62,11 +60,17 @@ object UpstreamSource : PdSource {
          * than per port so that it survives the type-C class being unreadable:
          * it is the only place the negotiated current appears at all.
          */
-        val contract = ucsiContract(sysfs)
+        val contract = UcsiSupply.contract(sysfs)
 
-        val names = sysfs.list(TYPEC).filterNot { it.contains('-') }
+        val names = TypeCClass.ports(sysfs)
         val ports = if (names.isNotEmpty()) {
-            names.map { port(sysfs, it, capabilities, contract) }
+            names.map { name ->
+                TypeCClass.port(sysfs, name).copy(
+                    capabilities = capabilities,
+                    protocol = contract.protocol,
+                    negotiatedMilliamps = contract.milliamps,
+                )
+            }
         } else {
             /* No type-C class to read, so report the port without naming it. */
             listOf(
@@ -91,75 +95,12 @@ object UpstreamSource : PdSource {
         return Snapshot(
             origin = Origin.UPSTREAM,
             ports = ports,
-            measured = measured(sysfs),
+            measured = ChargerSupply.measured(sysfs),
             emptyReason = when {
                 capabilities.isNotEmpty() -> null
                 !attached -> EmptyReason.NOTHING_ATTACHED
                 else -> EmptyReason.NO_CAPABILITIES_REGISTERED
             },
-        )
-    }
-
-    /**
-     * What UCSI's power supply says about the contract. Its current is derived
-     * from the request object - rdo_op_current() - so it is an agreed figure
-     * and not a measurement; its voltage needs the source object the request
-     * points at, so on a platform that never read the objects it reads zero
-     * and is left alone here.
-     */
-    private fun ucsiContract(sysfs: Sysfs): Contract {
-        val supply = sysfs.list(SUPPLY).firstOrNull { it.startsWith(UCSI_SUPPLY_PREFIX) }
-            ?: return Contract()
-        val directory = "$SUPPLY/$supply"
-
-        val values = sysfs.read(
-            listOf("online", "usb_type", "current_now").map { "$directory/$it" }
-        )
-        if (values["$directory/online"] != "1") {
-            return Contract()
-        }
-
-        return Contract(
-            protocol = values["$directory/usb_type"]?.activeValue(),
-            milliamps = values["$directory/current_now"]
-                ?.toIntOrNull()
-                ?.takeIf { it > 0 }
-                ?.let { it / 1000 },
-        )
-    }
-
-    private data class Contract(val protocol: String? = null, val milliamps: Int? = null)
-
-    private fun port(
-        sysfs: Sysfs,
-        name: String,
-        capabilities: List<SourceCapability>,
-        contract: Contract,
-    ): Port {
-        val directory = "$TYPEC/$name"
-        val partner = "$directory$PARTNER_SUFFIX"
-
-        val values = sysfs.read(
-            listOf(
-                "$directory/power_role",
-                "$directory/data_role",
-                "$directory/power_operation_mode",
-                "$directory/usb_power_delivery_revision",
-                "$partner/supports_usb_power_delivery",
-            )
-        )
-
-        return Port(
-            attached = sysfs.list(TYPEC).contains("$name$PARTNER_SUFFIX"),
-            name = name,
-            powerRole = values["$directory/power_role"]?.activeValue(),
-            dataRole = values["$directory/data_role"]?.activeValue(),
-            contract = values["$directory/power_operation_mode"],
-            pdRevision = values["$directory/usb_power_delivery_revision"],
-            partnerSupportsPd = values["$partner/supports_usb_power_delivery"]?.equals("yes"),
-            capabilities = capabilities,
-            negotiatedMilliamps = contract.milliamps,
-            protocol = contract.protocol,
         )
     }
 
@@ -265,39 +206,6 @@ object UpstreamSource : PdSource {
                 ?: 0,
         )
     }
-
-    /*
-     * The vendor's charger supply, which measures the port rather than saying
-     * what was agreed. Taken as whichever USB-typed supply is online and has
-     * numbers, skipping UCSI's own - that one reports the contract, not a
-     * measurement, and is read above.
-     */
-    private fun measured(sysfs: Sysfs): Measured? =
-        sysfs.list(SUPPLY)
-            .filterNot { it.startsWith(UCSI_SUPPLY_PREFIX) }
-            .firstNotNullOfOrNull { name ->
-                val directory = "$SUPPLY/$name"
-                val values = sysfs.read(
-                    listOf("type", "online", "voltage_now", "current_now")
-                        .map { "$directory/$it" }
-                )
-
-                val type = values["$directory/type"] ?: return@firstNotNullOfOrNull null
-                if (!type.startsWith("USB") || values["$directory/online"] != "1") {
-                    return@firstNotNullOfOrNull null
-                }
-
-                val millivolts = values["$directory/voltage_now"]?.toIntOrNull()?.let { it / 1000 }
-                val milliamps = values["$directory/current_now"]?.toIntOrNull()?.let { it / 1000 }
-                if (millivolts == null && milliamps == null) {
-                    return@firstNotNullOfOrNull null
-                }
-
-                Measured(name, type, millivolts, milliamps)
-            }
-
-    private const val PARTNER_SUFFIX = "-partner"
-    private const val UCSI_SUPPLY_PREFIX = "ucsi-source-psy"
 
     private val FIXED_FLAGS = listOf(
         "unconstrained_power",

@@ -12,8 +12,8 @@ import android.system.Os
  * What this handset is, to the extent that it decides where the power delivery
  * state is published. Two things matter, and neither is conclusive on its own:
  *
- *  - the kernel version, because the upstream class arrived in 5.18 and the
- *    qualcomm driver is what came before it;
+ *  - the kernel version, because the upstream class arrived in android14-6.1
+ *    and the qualcomm driver is what came before it;
  *  - the platform, because the qualcomm driver is qualcomm's and a board from
  *    anyone else will not have it whatever its kernel.
  *
@@ -87,10 +87,12 @@ data class KernelVersion(val major: Int, val minor: Int) : Comparable<KernelVers
         private val LEADING = Regex("""^(\d+)\.(\d+)""")
 
         /**
-         * The upstream usb_power_delivery class landed here, so a kernel older
-         * than this cannot have it however it is configured.
+         * The oldest android kernel carrying the upstream usb_power_delivery
+         * class - drivers/usb/typec/pd.c is in android14-6.1 and not in
+         * android13-5.15 - so anything older cannot have it however it is
+         * configured.
          */
-        val UPSTREAM_PD_CLASS = KernelVersion(5, 18)
+        val UPSTREAM_PD_CLASS = KernelVersion(6, 1)
 
         fun parse(release: String): KernelVersion? =
             LEADING.find(release)?.destructured?.let { (major, minor) ->

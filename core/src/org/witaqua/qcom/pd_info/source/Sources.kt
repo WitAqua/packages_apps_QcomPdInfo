@@ -18,9 +18,9 @@ import org.witaqua.qcom.pd_info.model.Snapshot
  *
  * The platform and the kernel version decide the order to try in, because they
  * say which interface a board plausibly has: the upstream class arrived in
- * 5.18, and the driver that publishes the 32-bit objects is qualcomm's, so a
- * 5.4 qualcomm board can only have the latter and a 6.x board from anyone else
- * can only have the former.
+ * android14-6.1, and the driver that publishes the 32-bit objects is
+ * qualcomm's, so a 5.4 qualcomm board can only have the latter and a 6.x board
+ * from anyone else can only have the former.
  *
  * They do not decide the answer. A 6.12 board registers the upstream devices
  * and may leave them empty, and no version or model name distinguishes that
@@ -64,6 +64,14 @@ object Sources {
             if (!contains(QualcommSource)) {
                 add(QualcommSource)
             }
+
+            /*
+             * Last, because it is the one that cannot answer the question this
+             * app is for: no object list exists anywhere on a board that gets
+             * this far. It is still the difference between a screen that says
+             * what the contract is and one that says nothing at all.
+             */
+            add(UcsiSupplySource)
         }
     }
 
@@ -116,14 +124,17 @@ object Sources {
      *   the whole menu and never say which line was ordered.
      *
      * Qualcomm's own driver publishes both, so a board with it comes through
-     * here untouched.
+     * here untouched. Anything else is worth asking for, including the source
+     * that has no objects of its own: a kernel that grew the debugfs interface
+     * without growing the class - one patched the way
+     * docs/5.10_xiaomi-sm8450.md describes - can then answer in full.
      *
      * In practice this makes the request a root-only figure on the upstream
      * path, since debugfs is what it comes from - which is a split the builds
      * already have rather than one this introduces.
      */
     private fun fillIn(sysfs: Sysfs, snapshot: Snapshot): Snapshot {
-        if (snapshot.origin != Origin.UPSTREAM || !UcsiDebugfs.present(sysfs)) {
+        if (snapshot.origin == Origin.QUALCOMM || !UcsiDebugfs.present(sysfs)) {
             return snapshot
         }
 
@@ -163,7 +174,9 @@ object Sources {
      * amount of trying changes it.
      */
     fun sysfs(preferRoot: Boolean = false): Sysfs {
-        if (!preferRoot && candidates().any { it.present(DirectSysfs) }) {
+        if (!preferRoot &&
+            candidates().any { it.publishesCapabilities && it.present(DirectSysfs) }
+        ) {
             return DirectSysfs
         }
         return if (RootSysfs.available()) RootSysfs else DirectSysfs

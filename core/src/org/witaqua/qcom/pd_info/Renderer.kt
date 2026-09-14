@@ -49,7 +49,7 @@ class Renderer(private val context: Context) {
                 if (port.capabilities.isNotEmpty()) {
                     add(capabilitySection(port))
                 }
-                contractSection(port)?.let { add(it) }
+                contractSection(port, snapshot.origin)?.let { add(it) }
             }
 
             snapshot.measured?.let { add(measuredSection(it, snapshot.origin)) }
@@ -150,24 +150,33 @@ class Renderer(private val context: Context) {
     )
 
     /*
-     * What was actually taken. The two interfaces answer this differently -
-     * one has the request object itself, the other only the current that UCSI
-     * derived from it - so the row says which it is rather than pretending
-     * they are the same thing.
+     * What was actually taken. The interfaces answer this differently - one has
+     * the request object itself, the others only what UCSI derived from it - so
+     * the rows say which it is rather than pretending they are the same thing.
      */
-    private fun contractSection(port: Port): Section? {
+    private fun contractSection(port: Port, origin: Origin): Section? {
+        /*
+         * Only where the request object itself is out of reach. UCSI's power
+         * supply works both of these out with rdo_op_current() and
+         * pdo_fixed_voltage(), which read the fixed-supply fields whatever the
+         * request actually is - against a programmable supply that lands on the
+         * wrong bits and gives figures that mean nothing. Where the request
+         * could be read, it has already been read properly.
+         */
+        val derived = port.request == null
+
         val rows = buildList {
             port.request?.let { add(Row(context.getString(R.string.label_request), request(it))) }
 
-            /*
-             * Only where the request object itself is out of reach. UCSI's
-             * power supply derives its current with rdo_op_current(), which
-             * reads the fixed-supply field whatever the request actually is -
-             * against a programmable supply that lands on the wrong bits and
-             * gives a figure that means nothing. Where the request could be
-             * read, it has already been read properly.
-             */
-            if (port.request == null) {
+            if (derived) {
+                port.negotiatedMillivolts?.let {
+                    add(
+                        Row(
+                            context.getString(R.string.label_negotiated_voltage),
+                            context.getString(R.string.value_volts, volts(it)),
+                        )
+                    )
+                }
                 port.negotiatedMilliamps?.let {
                     add(
                         Row(
@@ -178,18 +187,42 @@ class Renderer(private val context: Context) {
                 }
             }
         }
-        if (rows.isEmpty()) {
+        val note = when {
+            !derived -> null
+
+            /*
+             * The one case worth a heading with nothing under it: the figures
+             * were withheld on purpose, and saying why is the whole content.
+             */
+            port.programmable == true ->
+                context.getString(R.string.note_contract_programmable)
+
+            rows.isEmpty() -> null
+
+            /*
+             * The upstream class arrives with the objects but without a
+             * voltage, so it gets the narrower line. Where there is no object
+             * list the reader has nothing to weigh either figure against, and
+             * what can be said depends on whether the charger firmware named
+             * the kind of contract.
+             */
+            origin != Origin.UCSI_SUPPLY ->
+                context.getString(R.string.note_current_from_request)
+
+            port.programmable == false ->
+                context.getString(R.string.note_contract_fixed_supply)
+
+            else -> context.getString(R.string.note_contract_from_supply)
+        }
+
+        if (rows.isEmpty() && note == null) {
             return null
         }
 
         return Section(
             title = context.getString(R.string.section_in_use),
             rows = rows,
-            note = if (port.request == null && port.negotiatedMilliamps != null) {
-                context.getString(R.string.note_current_from_request)
-            } else {
-                null
-            },
+            note = note,
         )
     }
 
@@ -251,6 +284,12 @@ class Renderer(private val context: Context) {
                 title = context.getString(R.string.section_why_empty),
                 rows = emptyList(),
                 note = context.getString(R.string.note_no_capabilities),
+            )
+
+            EmptyReason.NO_OBJECT_INTERFACE -> Section(
+                title = context.getString(R.string.section_why_empty),
+                rows = emptyList(),
+                note = context.getString(R.string.note_no_object_interface),
             )
 
             /* Handled before any of this, by returning a page of its own. */

@@ -103,23 +103,34 @@ allow system_app vendor_sysfs_usb_c:file r_file_perms;
 allow system_app vendor_sysfs_usb_supply:file r_file_perms;
 ```
 
-Check the labels on the handset rather than trusting either list:
+One more read is worth granting on any qualcomm board, whichever interface it
+has: `/sys/class/qcom-battery/usb_real_type`, which is the only thing that says
+whether a contract is against a programmable supply - see
+[docs/kernel.md](docs/kernel.md). Its label is the charger's, and vendor
+policies differ on what that is.
+
+Check the labels on the handset rather than trusting any of these lists:
 
 ```sh
 adb shell su -c 'ls -Zd /sys/class/usbpd /sys/class/usb_power_delivery /sys/class/typec'
-adb shell su -c 'ls -Z /sys/class/power_supply/*/voltage_now'
+adb shell su -c 'ls -Z /sys/class/power_supply/*/voltage_now /sys/class/qcom-battery/usb_real_type'
 ```
 
 `logcat | grep avc` while the screen is open will name anything still refused.
 
 ### 4. What you get
 
-With the nodes readable, `QcomPdInfo` needs no root and no debugfs. On a board with
-Qualcomm's driver that is the whole of it. On one with the upstream class whose
-firmware does not report that it can list its objects, the list will not appear
-however the policy is written - the kernel never read it. That case, and the
-one-line kernel change that fixes it, are in
+With the nodes readable, `QcomPdInfo` needs no root and no debugfs. On a board
+with Qualcomm's driver that is the whole of it. On one with the upstream class
+whose firmware does not report that it can list its objects, the list will not
+appear however the policy is written - the kernel never read it. That case, and
+the one-line kernel change that fixes it, are in
 [docs/kernel.md](docs/kernel.md).
+
+On a board with neither interface - an older kernel whose power delivery lives
+in the charger firmware - there is no list to label anything for, and what comes
+out is the contract UCSI worked out from objects it will not hand over. That
+case is [docs/5.10_xiaomi-sm8450.md](docs/5.10_xiaomi-sm8450.md).
 
 ## Building the sideloaded variant
 
@@ -149,6 +160,9 @@ look, so the two cannot share a file - keep them in step.
 - [docs/kernel.md](docs/kernel.md) - which interface a kernel publishes, what
   each one carries, why a platform can register the upstream class and leave it
   empty, and the kernel change that fixes that.
+- [docs/5.10_xiaomi-sm8450.md](docs/5.10_xiaomi-sm8450.md) - a board with none
+  of the three interfaces at all: why, what is left to read, and what it would
+  take to get the rest.
 
 ## Licence
 
