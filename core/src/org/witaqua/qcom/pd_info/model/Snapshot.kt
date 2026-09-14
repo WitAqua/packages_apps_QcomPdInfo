@@ -105,6 +105,18 @@ data class Port(
     /** What the other end advertised. Empty when it was never read. */
     val capabilities: List<SourceCapability> = emptyList(),
 
+    /**
+     * What this port asks for, as it advertises itself to a charger - the
+     * sink capabilities the class publishes for the port's own device. Empty
+     * where the driver registered none, which is most boards.
+     *
+     * The same object shapes as above, because a sink's objects are the same
+     * data objects read the other way round: where a source says what it can
+     * deliver, a sink says what it would operate at. Worth having on a board
+     * with two ports, since they need not be the same port twice.
+     */
+    val sinkCapabilities: List<SourceCapability> = emptyList(),
+
     /** What this end asked for, where the interface exposes it. */
     val request: Request? = null,
 
