@@ -32,6 +32,7 @@
     <string name="label_partner">Charger</string>
     <string name="label_object">Object <xliff:g id="index" example="1">%1$d</xliff:g></string>
     <string name="label_request">Request</string>
+    <string name="label_negotiated_voltage">Negotiated voltage</string>
     <string name="label_negotiated_current">Negotiated current</string>
     <string name="label_reported_as">Reported as</string>
     <string name="label_voltage">Voltage</string>
@@ -72,8 +73,12 @@
     <string name="note_source_flags">The charger says: <xliff:g id="flags">%1$s</xliff:g>.</string>
 
     <string name="note_current_from_request">This is the current that was agreed, taken from the request object, not a measurement. The voltage that would go with it needs the charger\'s object list, which this kernel did not read.</string>
+    <string name="note_contract_from_supply">These are UCSI\'s own figures for the contract, worked out in the kernel from the request object rather than measured. Both read the fixed-supply fields of whatever object the request named, so against a programmable supply (PPS) they mean nothing - and with no object list there is no way to tell which it was. Weigh them against what is measured below.</string>
+    <string name="note_contract_fixed_supply">These are UCSI\'s own figures for the contract, worked out in the kernel from the request object rather than measured. The charger firmware reports a fixed-supply contract, which is what they are read as, so they hold.</string>
+    <string name="note_contract_programmable">The charger firmware reports a programmable supply (PD_PPS), and UCSI publishes nothing that reads correctly for one - its voltage and current come from the fixed-supply fields of an object that has neither, so they are left out rather than shown wrong. What is measured below is what is actually arriving.</string>
     <string name="note_measured_not_agreed">This is what is being delivered rather than what was asked for: the upstream interface publishes no request object.</string>
     <string name="note_no_capabilities">The kernel created the power delivery devices but registered no capabilities in them, so the object list is not available. With UCSI that happens when the firmware does not report PDO details, or when the platform skips reading the charger\'s objects. Nothing in userspace can recover them.</string>
+    <string name="note_no_object_interface">Nothing on this kernel publishes the charger\'s object list. Qualcomm\'s own driver is not built for this board, the upstream power delivery class arrived in android14-6.1, and UCSI\'s debugfs interface in android15-6.6. The driver did read the objects - there is simply nowhere to read them back out of, and the contract above is what UCSI works out from them.</string>
     <string name="note_unavailable">No power delivery interface was found. The list needs either Qualcomm\'s own driver at /sys/class/usbpd or the upstream class at /sys/class/usb_power_delivery, and this kernel publishes neither.</string>
 
     <string name="root_needed">Root access is needed to read these files on this ROM, and it was not granted.</string>

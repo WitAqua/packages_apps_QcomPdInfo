@@ -26,7 +26,7 @@ kernel work is needed on a board that has it.
 
 ### The upstream class
 
-`drivers/usb/typec/pd.c`, from Linux 5.18. Each object is a directory of
+`drivers/usb/typec/pd.c`, from android14-6.1. Each object is a directory of
 decimal fields rather than one word:
 
 ```
@@ -41,6 +41,50 @@ documented in `Documentation/ABI/testing/sysfs-class-usb_power_delivery`.
 
 It has no request object anywhere in the class. What was actually taken has to
 come from elsewhere - see below.
+
+## What the charger firmware adds
+
+Neither interface says which kind of contract is in force.
+`ucsi_psy_get_usb_type()` answers `PD` for every power delivery contract, PPS
+included, and the type-C class only ever says `usb_power_delivery`. On a
+qualcomm platform the charger does say, through the class that
+`drivers/power/supply/qti_battery_charger.c` registers for it:
+
+```
+/sys/class/qcom-battery/usb_real_type
+```
+
+The values are the power supply class's own list with qualcomm's on the end -
+`PD`, `PD_DRP`, `PD_PPS`, `HVDCP`, `HVDCP_3`, `HVDCP_3P5`, `USB_FLOAT` and the
+rest. That driver is the charger on every pmic-glink platform: the class and the
+attribute are the same on CLO 5.10 and 5.15 and on the 6.1 and 6.6 vendor
+trees.
+
+It matters where the object list is missing. UCSI's power supply works its
+voltage and current out of the request with `pdo_fixed_voltage()` and
+`rdo_op_current()`, which read fields an APDO does not have, so on a PPS
+contract both are meaningless - and with no list there is nothing to notice that
+from. The real type is what makes it knowable, so the app reads it and withholds
+the two figures rather than showing them wrong. `PD_DRP` is a fixed contract in
+dual-role clothing rather than a third kind.
+
+## Which CLO kernel has which
+
+| Kernel | What it publishes | What is left to read |
+| --- | --- | --- |
+| 4.19, 5.4, and 5.10 or 5.15 on a board whose PMIC has the PD PHY | `/sys/class/usbpd`, objects and request both | nothing else needed |
+| 5.10, 5.15 on pmic-glink | the type-C class and UCSI's supply | the contract, without the list |
+| 6.1 | the `usb_power_delivery` class is registered, and UCSI puts nothing in it | as above |
+| 6.6 | UCSI registers the capabilities, and its debugfs is there too | the class, and the request over debugfs |
+| 6.12 | the capability gate arrives, so the devices go empty again unless the firmware reports PDO details | the class where it filled, else debugfs |
+
+`/sys/class/qcom-battery/usb_real_type` is there on all of them from 5.10 on, so
+the kind of contract is knowable wherever the list is not.
+
+Whether a board has the PD PHY is a PMIC question rather than a kernel one: the
+node is `qcom,qpnp-pdphy`, it is in the pm7250b-class device trees and not in
+the pm8350b ones, and where it is absent the whole policy engine lives in the
+charger firmware.
 
 ## The problem this app was written around
 
@@ -57,8 +101,9 @@ static int ucsi_get_pdos(struct ucsi_connector *con, enum typec_role role,
 		return 0;
 ```
 
-and `ucsi_get_pd_caps()` registers nothing when that returns zero. The
-`usb_power_delivery` devices are created regardless, so a platform whose
+and `ucsi_get_pd_caps()` registers nothing when that returns zero. The check is
+android16-6.12 and later; android15-6.6 registers the capabilities without it.
+The `usb_power_delivery` devices are created regardless, so a platform whose
 firmware does not set the bit ends up with `pd0` and `pd1` present and empty -
 which looks like a bug and is not one.
 
@@ -75,7 +120,8 @@ Mainline carries quirks in the other direction for the same family
 
 ### Without touching the kernel
 
-`drivers/usb/typec/ucsi/debugfs.c` exposes the policy manager directly:
+`drivers/usb/typec/ucsi/debugfs.c`, from android15-6.6, exposes the policy
+manager directly:
 
 ```
 /sys/kernel/debug/usb/ucsi/<name>/command    a command word, written
