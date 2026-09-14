@@ -33,9 +33,6 @@ import org.witaqua.qcom.pd_info.model.SourceCapability
 object UcsiDebugfs {
     private const val ROOT = "/sys/kernel/debug/usb/ucsi"
 
-    /* The connectors are numbered from one, and one is all any handset has. */
-    private const val CONNECTOR = 1L
-
     /* UCSI command opcodes and the fields each one takes. */
     private const val GET_CONNECTOR_STATUS = 0x12L
     private const val GET_PDOS = 0x10L
@@ -59,10 +56,14 @@ object UcsiDebugfs {
         sysfs.list(ROOT).firstOrNull { sysfs.list("$ROOT/$it").contains("command") }
 
     /**
-     * The charger's source capabilities, in advertised order, or an empty list
-     * when the question cannot be put or is not answered.
+     * The charger's source capabilities on one connector, in advertised order,
+     * or an empty list when the question cannot be put or is not answered.
+     *
+     * Connectors number from one, and which one is asked matters on a board
+     * that has two of them - the type-C class counts its ports from zero, so
+     * the number here is one more than the port's.
      */
-    fun capabilities(sysfs: Sysfs): List<SourceCapability> {
+    fun capabilities(sysfs: Sysfs, connector: Int): List<SourceCapability> {
         val name = device(sysfs) ?: return emptyList()
         val words = mutableListOf<Long>()
 
@@ -77,7 +78,7 @@ object UcsiDebugfs {
                 sysfs,
                 name,
                 GET_PDOS or
-                    (CONNECTOR shl CONNECTOR_SHIFT) or
+                    (connector.toLong() shl CONNECTOR_SHIFT) or
                     (1L shl PARTNER_SHIFT) or
                     (offset.toLong() shl OFFSET_SHIFT) or
                     ((count - 1).toLong() shl NUM_PDOS_SHIFT) or
@@ -116,15 +117,20 @@ object UcsiDebugfs {
     }
 
     /**
-     * The request in force. The class publishes no request object at all, but
-     * the connector status carries one, which is where the driver gets it from.
+     * The request in force on one connector. The class publishes no request
+     * object at all, but the connector status carries one, which is where the
+     * driver gets it from.
      */
-    fun request(sysfs: Sysfs, capabilities: List<SourceCapability>): Request? {
+    fun request(
+        sysfs: Sysfs,
+        connector: Int,
+        capabilities: List<SourceCapability>,
+    ): Request? {
         val name = device(sysfs) ?: return null
         val response = send(
             sysfs,
             name,
-            GET_CONNECTOR_STATUS or (CONNECTOR shl CONNECTOR_SHIFT),
+            GET_CONNECTOR_STATUS or (connector.toLong() shl CONNECTOR_SHIFT),
         ) ?: return null
 
         /* Bits 32..63 of the status, which is the second 32-bit word of it. */

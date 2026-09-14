@@ -26,6 +26,25 @@ internal object TypeCClass {
     fun ports(sysfs: Sysfs): List<String> = sysfs.list(DIRECTORY).filterNot { it.contains('-') }
 
     /**
+     * The UCSI connector a port is. The class numbers ports from zero and UCSI
+     * numbers connectors from one, and the difference matters twice over: it
+     * names the port's power supply, and it is what a command to the policy
+     * manager has to carry. Null for a port whose name does not follow the
+     * class's own convention, since nothing better can be guessed.
+     */
+    fun connector(port: String): Int? = port.removePrefix("port").toIntOrNull()?.plus(1)
+
+    /**
+     * The power delivery device holding what the partner advertised, where
+     * there is one. This symlink is the only thread between the two: UCSI
+     * registers a partner's device as a virtual one, which carries no link back
+     * to the port, so a board with two ports cannot otherwise be told which
+     * list belongs to which.
+     */
+    fun partnerDevice(sysfs: Sysfs, port: String): String? =
+        sysfs.resolve("$DIRECTORY/$port$PARTNER_SUFFIX/usb_power_delivery")
+
+    /**
      * What the class says about one port. Anything a data object would add is
      * left for the caller to fill in.
      */
@@ -56,6 +75,7 @@ internal object TypeCClass {
             contract = values["$directory/power_operation_mode"],
             pdRevision = values["$directory/usb_power_delivery_revision"],
             partnerSupportsPd = values["$partner/supports_usb_power_delivery"]?.equals("yes"),
+            connector = connector(name),
         )
     }
 }

@@ -8,10 +8,11 @@ package org.witaqua.qcom.pd_info.source
 import org.witaqua.qcom.pd_info.io.Sysfs
 
 /*
- * Qualcomm's charger firmware, through the class that
- * drivers/power/supply/qti_battery_charger.c registers for it:
+ * Qualcomm's charger firmware, through what
+ * drivers/power/supply/qti_battery_charger.c publishes for it:
  *
  *   /sys/class/qcom-battery/usb_real_type
+ *   /sys/class/power_supply/usb/real_type
  *
  * That driver is the charger on every pmic-glink platform, which is all of them
  * from 5.10 on, and this attribute is the one thing it says that UCSI does not:
@@ -27,11 +28,22 @@ import org.witaqua.qcom.pd_info.io.Sysfs
  * PD_PPS, BrickID, USB_FLOAT, HVDCP, HVDCP_3, HVDCP_3P5.
  */
 internal object QtiCharger {
-    private const val REAL_TYPE = "/sys/class/qcom-battery/usb_real_type"
+    /*
+     * Two places for the same figure, because vendors trim the class: the
+     * tablet checked here has a qcom-battery full of its own attributes and no
+     * usb_real_type among them, while the charger's own supply carries it.
+     * Taken in this order, since the class is qualcomm's own spelling.
+     */
+    private val LOCATIONS = listOf(
+        "/sys/class/qcom-battery/usb_real_type",
+        "/sys/class/power_supply/usb/real_type",
+    )
 
     /** What the charger calls the adapter, or null where it will not say. */
-    fun realType(sysfs: Sysfs): String? =
-        sysfs.read(REAL_TYPE)?.takeIf { it != UNKNOWN }
+    fun realType(sysfs: Sysfs): String? {
+        val values = sysfs.read(LOCATIONS)
+        return LOCATIONS.firstNotNullOfOrNull { values[it] }?.takeIf { it != UNKNOWN }
+    }
 
     /**
      * Whether the contract is against a programmable supply. Null where the

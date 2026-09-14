@@ -36,43 +36,19 @@ object UpstreamSource : PdSource {
             return null
         }
 
-        /*
-         * Which power delivery device is the charger's. Decided from the device
-         * behind it rather than from the type-C symlink that points at it,
-         * because the type-C class is not always readable - on at least one
-         * Android 16 build the shell is refused it while the power delivery
-         * class is allowed - and a partner is the only owner that carries
-         * supports_usb_power_delivery.
-         */
-        val partnerDevice = devices.firstOrNull { name ->
-            sysfs.read("$PD/$name/device/supports_usb_power_delivery") != null
-        } ?: sysfs.list(TypeCClass.DIRECTORY)
-            .filter { it.endsWith(TypeCClass.PARTNER_SUFFIX) }
-            .firstNotNullOfOrNull { partner ->
-                sysfs.read("${TypeCClass.DIRECTORY}/$partner/usb_power_delivery")
-                    ?.substringAfterLast('/')
-            }
-
-        val capabilities = partnerDevice?.let { capabilities(sysfs, it) } ?: emptyList()
-
-        /*
-         * The contract, by way of UCSI's own power supply. Read here rather
-         * than per port so that it survives the type-C class being unreadable:
-         * it is the only place the negotiated current appears at all.
-         */
-        val contract = UcsiSupply.contract(sysfs)
-
         val names = TypeCClass.ports(sysfs)
         val ports = if (names.isNotEmpty()) {
-            names.map { name ->
-                TypeCClass.port(sysfs, name).copy(
-                    capabilities = capabilities,
-                    protocol = contract.protocol,
-                    negotiatedMilliamps = contract.milliamps,
-                )
-            }
+            names.map { name -> port(sysfs, name, names.size) }
         } else {
-            /* No type-C class to read, so report the port without naming it. */
+            /*
+             * No type-C class to read - on at least one Android 16 build the
+             * shell is refused it while the power delivery class is allowed -
+             * so report the port without naming it, and take the objects from
+             * whichever device turns out to hold them.
+             */
+            val capabilities = unattributed(sysfs, devices)
+            val contract = UcsiSupply.contract(sysfs).withCharger(sysfs, ports = 1)
+
             listOf(
                 Port(
                     attached = capabilities.isNotEmpty(),
@@ -90,18 +66,76 @@ object UpstreamSource : PdSource {
          * between "nothing attached" and "attached, and the objects were never
          * read" - which from the capabilities alone look the same.
          */
-        val attached = ports.any { it.attached }
-
         return Snapshot(
             origin = Origin.UPSTREAM,
             ports = ports,
             measured = ChargerSupply.measured(sysfs),
             emptyReason = when {
-                capabilities.isNotEmpty() -> null
-                !attached -> EmptyReason.NOTHING_ATTACHED
+                ports.any { it.capabilities.isNotEmpty() } -> null
+                ports.none { it.attached } -> EmptyReason.NOTHING_ATTACHED
                 else -> EmptyReason.NO_CAPABILITIES_REGISTERED
             },
         )
+    }
+
+    /**
+     * One port, with the objects its own partner advertised and the contract
+     * its own connector negotiated. Everything here is per port on purpose: a
+     * board with two of them can hold a charger on one and a data cable on the
+     * other, and sharing either would describe the wrong cable.
+     */
+    private fun port(sysfs: Sysfs, name: String, ports: Int): Port {
+        val connector = TypeCClass.connector(name)
+        val contract = UcsiSupply.contract(sysfs, connector).withCharger(sysfs, ports)
+        val partner = TypeCClass.partnerDevice(sysfs, name)
+
+        val capabilities = partner?.let { capabilities(sysfs, it) } ?: emptyList()
+
+        val port = TypeCClass.port(sysfs, name).copy(
+            capabilities = capabilities,
+            protocol = contract.protocol,
+            /*
+             * A menu with no programmable supply on it cannot have been
+             * ordered from as one, which is worth knowing where the charger
+             * firmware does not say: it is what decides whether UCSI's two
+             * figures below read from the right fields. The other way round
+             * proves nothing - an offered PPS object is not a PPS contract.
+             */
+            programmable = contract.programmable
+                ?: false.takeIf {
+                    capabilities.isNotEmpty() &&
+                        capabilities.none { it is SourceCapability.Programmable }
+                },
+        )
+        if (!port.inPowerDelivery()) {
+            return port
+        }
+
+        /*
+         * UCSI works both figures out of the request object, so they are worth
+         * having even here where the objects themselves were read: the class
+         * publishes no request, and without one there is nothing else to say
+         * which line of the menu was ordered.
+         */
+        return port.copy(
+            negotiatedMillivolts = contract.millivolts.takeUnless { port.programmable == true },
+            negotiatedMilliamps = contract.milliamps.takeUnless { port.programmable == true },
+        )
+    }
+
+    /**
+     * The objects where there is no type-C class to say whose they are. A
+     * partner is the only owner that carries supports_usb_power_delivery, and
+     * failing that the only device with a list is the one worth reading.
+     */
+    private fun unattributed(sysfs: Sysfs, devices: List<String>): List<SourceCapability> {
+        val owner = devices.firstOrNull { name ->
+            sysfs.read("$PD/$name/device/supports_usb_power_delivery") != null
+        } ?: devices.firstOrNull { name ->
+            sysfs.list("$PD/$name/source-capabilities").isNotEmpty()
+        }
+
+        return owner?.let { capabilities(sysfs, it) } ?: emptyList()
     }
 
     private fun capabilities(sysfs: Sysfs, device: String): List<SourceCapability> {
@@ -128,7 +162,7 @@ object UpstreamSource : PdSource {
             FIXED_FLAGS.map { "$directory/$it" } +
                 listOf("$directory/voltage", "$directory/maximum_current")
         )
-        val millivolts = values["$directory/voltage"]?.toIntOrNull() ?: return null
+        val millivolts = values["$directory/voltage"].quantity() ?: return null
 
         /*
          * The kernel only exposes the source-wide bits on object 1, the same
@@ -150,7 +184,7 @@ object UpstreamSource : PdSource {
         return SourceCapability.Fixed(
             position = position,
             millivolts = millivolts,
-            maxMilliamps = values["$directory/maximum_current"]?.toIntOrNull() ?: 0,
+            maxMilliamps = values["$directory/maximum_current"].quantity() ?: 0,
             flags = flags,
         )
     }
@@ -161,9 +195,9 @@ object UpstreamSource : PdSource {
         )
         return SourceCapability.Battery(
             position = position,
-            minMillivolts = values["$directory/minimum_voltage"]?.toIntOrNull() ?: return null,
-            maxMillivolts = values["$directory/maximum_voltage"]?.toIntOrNull() ?: return null,
-            maxMilliwatts = values["$directory/maximum_power"]?.toIntOrNull() ?: 0,
+            minMillivolts = values["$directory/minimum_voltage"].quantity() ?: return null,
+            maxMillivolts = values["$directory/maximum_voltage"].quantity() ?: return null,
+            maxMilliwatts = values["$directory/maximum_power"].quantity() ?: 0,
         )
     }
 
@@ -173,9 +207,9 @@ object UpstreamSource : PdSource {
         )
         return SourceCapability.Variable(
             position = position,
-            minMillivolts = values["$directory/minimum_voltage"]?.toIntOrNull() ?: return null,
-            maxMillivolts = values["$directory/maximum_voltage"]?.toIntOrNull() ?: return null,
-            maxMilliamps = values["$directory/maximum_current"]?.toIntOrNull() ?: 0,
+            minMillivolts = values["$directory/minimum_voltage"].quantity() ?: return null,
+            maxMillivolts = values["$directory/maximum_voltage"].quantity() ?: return null,
+            maxMilliamps = values["$directory/maximum_current"].quantity() ?: 0,
         )
     }
 
@@ -186,9 +220,9 @@ object UpstreamSource : PdSource {
         )
         return SourceCapability.Programmable(
             position = position,
-            minMillivolts = values["$directory/minimum_voltage"]?.toIntOrNull() ?: return null,
-            maxMillivolts = values["$directory/maximum_voltage"]?.toIntOrNull() ?: return null,
-            maxMilliamps = values["$directory/maximum_current"]?.toIntOrNull() ?: 0,
+            minMillivolts = values["$directory/minimum_voltage"].quantity() ?: return null,
+            maxMillivolts = values["$directory/maximum_voltage"].quantity() ?: return null,
+            maxMilliamps = values["$directory/maximum_current"].quantity() ?: 0,
             powerLimited = values["$directory/pps_power_limited"] == "1",
         )
     }
@@ -200,12 +234,20 @@ object UpstreamSource : PdSource {
         )
         return SourceCapability.Adjustable(
             position = position,
-            milliampsAt9To15V = values["$directory/maximum_current_9V_to_15V"]?.toIntOrNull()
+            milliampsAt9To15V = values["$directory/maximum_current_9V_to_15V"].quantity()
                 ?: return null,
-            milliampsAt15To20V = values["$directory/maximum_current_15V_to_20V"]?.toIntOrNull()
+            milliampsAt15To20V = values["$directory/maximum_current_15V_to_20V"].quantity()
                 ?: 0,
         )
     }
+
+    /**
+     * One of the class's numbers. Every quantity it publishes carries its unit
+     * - drivers/usb/typec/pd.c prints "5000mV", "3000mA", "15000mW" - so the
+     * digits are the whole of the value and anything else is the unit saying
+     * which field it was.
+     */
+    private fun String?.quantity(): Int? = this?.takeWhile { it.isDigit() }?.toIntOrNull()
 
     private val FIXED_FLAGS = listOf(
         "unconstrained_power",

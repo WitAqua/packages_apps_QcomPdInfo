@@ -139,29 +139,52 @@ object Sources {
         }
 
         /*
-         * Whatever the class managed, else ask. Asking is a command to the
-         * policy manager, so it is not done where reading a directory would
-         * have answered.
+         * Port by port, because the policy manager answers per connector and a
+         * board with two of them has two different cables to describe. A port
+         * with nothing attached is not asked about at all.
          */
-        val capabilities = snapshot.ports
-            .firstOrNull { it.capabilities.isNotEmpty() }
-            ?.capabilities
-            ?: UcsiDebugfs.capabilities(sysfs)
+        val ports = snapshot.ports.map { port ->
+            /*
+             * Only a port with a contract has anything to ask about, and asking
+             * anyway is not harmless: the tablet this was written against
+             * answers GET_PDOS for a connector with nothing on it by handing
+             * back the other connector's objects.
+             */
+            if (!port.attached || !port.inPowerDelivery()) {
+                return@map port
+            }
 
-        if (capabilities.isEmpty()) {
-            return snapshot
+            val connector = port.connector ?: DEFAULT_CONNECTOR
+
+            /*
+             * Whatever the class managed, else ask. Asking is a command to the
+             * policy manager, so it is not done where reading a directory would
+             * have answered.
+             */
+            val capabilities = port.capabilities
+                .ifEmpty { UcsiDebugfs.capabilities(sysfs, connector) }
+            if (capabilities.isEmpty()) {
+                return@map port
+            }
+
+            /* Reading the request needs the capability it was made against. */
+            val request = UcsiDebugfs.request(sysfs, connector, capabilities)
+
+            port.copy(capabilities = capabilities, request = request ?: port.request)
         }
 
-        /* Reading the request needs the capability it was made against. */
-        val request = UcsiDebugfs.request(sysfs, capabilities)
-
         return snapshot.copy(
-            ports = snapshot.ports.map {
-                it.copy(capabilities = capabilities, request = request ?: it.request)
+            ports = ports,
+            emptyReason = if (ports.any { it.capabilities.isNotEmpty() }) {
+                null
+            } else {
+                snapshot.emptyReason
             },
-            emptyReason = null,
         )
     }
+
+    /* One connector, where the type-C class did not say which. */
+    private const val DEFAULT_CONNECTOR = 1
 
     /**
      * The way in to use. Reading the files directly is right when the device
