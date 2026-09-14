@@ -138,26 +138,67 @@ class Renderer(private val context: Context) {
             ?: context.getString(R.string.headline_nothing)
     }
 
-    private fun portSection(port: Port) = Section(
-        title = port.name
-            ?.let { context.getString(R.string.section_port, it) }
-            ?: context.getString(R.string.section_port_unnamed),
-        rows = buildList {
-            port.contract?.let { add(Row(context.getString(R.string.label_contract), word(it))) }
-            port.powerRole?.let { add(Row(context.getString(R.string.label_power_role), word(it))) }
-            port.dataRole?.let { add(Row(context.getString(R.string.label_data_role), word(it))) }
-            port.protocol?.let { add(Row(context.getString(R.string.label_protocol), it)) }
-            port.pdRevision?.let { add(Row(context.getString(R.string.label_pd_revision), it)) }
-            port.partnerSupportsPd?.let {
-                add(
-                    Row(
-                        context.getString(R.string.label_partner),
-                        context.getString(
-                            if (it) R.string.partner_supports_pd else R.string.partner_no_pd
-                        ),
+    private fun portSection(port: Port): Section {
+        /*
+         * A port with nothing on it has no roles worth printing. The class
+         * answers for it anyway - UCSI reports a sink whether or not there is
+         * a cable - and on a board with two ports that would have the empty one
+         * describing a contract it is not in, beside the one that is.
+         */
+        if (!port.attached) {
+            return detachedPort(port)
+        }
+
+        return Section(
+            title = portTitle(port),
+            rows = buildList {
+                port.contract?.let {
+                    add(Row(context.getString(R.string.label_contract), word(it)))
+                }
+                port.powerRole?.let {
+                    add(Row(context.getString(R.string.label_power_role), word(it)))
+                }
+                port.dataRole?.let {
+                    add(Row(context.getString(R.string.label_data_role), word(it)))
+                }
+                port.protocol?.let { add(Row(context.getString(R.string.label_protocol), it)) }
+                port.pdRevision?.let {
+                    add(Row(context.getString(R.string.label_pd_revision), it))
+                }
+                port.partnerSupportsPd?.let {
+                    add(
+                        Row(
+                            context.getString(R.string.label_partner),
+                            context.getString(
+                                if (it) R.string.partner_supports_pd else R.string.partner_no_pd
+                            ),
+                        )
                     )
+                }
+            },
+        )
+    }
+
+    private fun portTitle(port: Port) = port.name
+        ?.let { context.getString(R.string.section_port, it) }
+        ?: context.getString(R.string.section_port_unnamed)
+
+    /**
+     * An empty port beside a busy one. The revision stays because it is the
+     * port's own rather than a contract's; the note does not, since the screen
+     * has something else on it to read - where every port is empty the page
+     * below says it once instead.
+     */
+    private fun detachedPort(port: Port) = Section(
+        title = portTitle(port),
+        rows = buildList {
+            add(
+                Row(
+                    context.getString(R.string.label_state),
+                    context.getString(R.string.state_detached),
                 )
-            }
+            )
+            port.pdRevision?.let { add(Row(context.getString(R.string.label_pd_revision), it)) }
         },
     )
 
