@@ -20,6 +20,8 @@
     <string name="section_port_unnamed">Port</string>
     <string name="section_advertised">Offered by the charger</string>
     <string name="section_in_use">In use</string>
+    <string name="section_requested">What this port asks for</string>
+    <string name="section_requested_port">What <xliff:g id="name" example="port0">%1$s</xliff:g> asks for</string>
     <string name="section_measured">Measured at <xliff:g id="supply" example="usb">%1$s</xliff:g></string>
     <string name="section_why_empty">Why the list is missing</string>
     <string name="section_unavailable">Not available</string>

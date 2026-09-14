@@ -45,6 +45,13 @@ internal object TypeCClass {
         sysfs.resolve("$DIRECTORY/$port$PARTNER_SUFFIX/usb_power_delivery")
 
     /**
+     * The port's own power delivery device, which carries what the port itself
+     * advertises rather than what is plugged into it.
+     */
+    fun portDevice(sysfs: Sysfs, port: String): String? =
+        sysfs.resolve("$DIRECTORY/$port/usb_power_delivery")
+
+    /**
      * What the class says about one port. Anything a data object would add is
      * left for the caller to fill in.
      */

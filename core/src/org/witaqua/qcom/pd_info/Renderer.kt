@@ -40,7 +40,12 @@ class Renderer(private val context: Context) {
          * would be wrong - the cable is out.
          */
         if (snapshot.emptyReason == EmptyReason.NOTHING_ATTACHED) {
-            return listOf(detached(snapshot))
+            /*
+             * What each port asks for is the port's own, so it is worth saying
+             * with nothing plugged in - it is the one thing that tells two
+             * sockets apart before either is used.
+             */
+            return listOf(detached(snapshot)) + snapshot.ports.mapNotNull { sinkSection(it) }
         }
 
         return buildList {
@@ -50,6 +55,7 @@ class Renderer(private val context: Context) {
                     add(capabilitySection(port))
                 }
                 contractSection(port)?.let { add(it) }
+                sinkSection(port)?.let { add(it) }
             }
 
             snapshot.measured?.let { add(measuredSection(it, snapshot.origin)) }
@@ -215,6 +221,29 @@ class Renderer(private val context: Context) {
             .firstNotNullOfOrNull { it.flags }
             ?.let { flags(it) },
     )
+
+    /**
+     * What this port advertises to a charger, where the driver registered it.
+     * Named after the port, since the point of showing it at all is that a
+     * board with two need not have two of the same.
+     */
+    private fun sinkSection(port: Port): Section? {
+        if (port.sinkCapabilities.isEmpty()) {
+            return null
+        }
+
+        return Section(
+            title = port.name
+                ?.let { context.getString(R.string.section_requested_port, it) }
+                ?: context.getString(R.string.section_requested),
+            rows = port.sinkCapabilities.map { capability ->
+                Row(
+                    context.getString(R.string.label_object, capability.position),
+                    capability(capability),
+                )
+            },
+        )
+    }
 
     /*
      * What was actually taken. The interfaces answer this differently - one has
