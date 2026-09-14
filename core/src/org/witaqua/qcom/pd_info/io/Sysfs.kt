@@ -39,6 +39,17 @@ interface Sysfs {
      */
     fun write(path: String, value: String): Boolean = false
 
+    /**
+     * The name of what a symlink points at, or null where there is no link.
+     *
+     * The power delivery class needs it: a partner's objects live in a device
+     * of its own, UCSI registers that device as a virtual one with no link
+     * back, and the only thing tying the two together is the symlink the
+     * type-C partner carries. Reading that with [read] gets nothing - it is a
+     * directory - which is why this is a separate question.
+     */
+    fun resolve(path: String): String?
+
     /** Whether this way in works at all, so the caller can say why it does not. */
     fun available(): Boolean
 }
@@ -65,6 +76,13 @@ object DirectSysfs : Sysfs {
         } catch (e: IOException) {
             Log.d(TAG, "could not write $path", e)
             false
+        }
+
+    override fun resolve(path: String): String? =
+        try {
+            File(path).takeIf { it.exists() }?.canonicalFile?.name
+        } catch (e: IOException) {
+            null
         }
 
     override fun available() = File("/sys/class").isDirectory
@@ -122,6 +140,14 @@ object RootSysfs : Sysfs {
          * question not being asked rather than a missing file.
          */
         shell("printf '%s' '${value.shellSafe()}' > '${path.shellSafe()}'") != null
+
+    override fun resolve(path: String): String? {
+        val quoted = "'${path.shellSafe()}'"
+        return shell("[ -e $quoted ] && readlink -f $quoted")
+            ?.trim()
+            ?.substringAfterLast('/')
+            ?.ifEmpty { null }
+    }
 
     override fun available() = shell("id -u")?.trim() == "0"
 

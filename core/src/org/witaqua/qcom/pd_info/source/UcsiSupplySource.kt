@@ -49,13 +49,19 @@ object UcsiSupplySource : PdSource {
         UcsiSupply.name(sysfs) != null || QtiCharger.realType(sysfs) != null
 
     override fun read(sysfs: Sysfs): Snapshot? {
-        val contract = UcsiSupply.contract(sysfs)
         val measured = ChargerSupply.measured(sysfs)
 
         val names = TypeCClass.ports(sysfs)
         val ports = if (names.isNotEmpty()) {
-            names.map { name -> TypeCClass.port(sysfs, name).withContract(contract) }
+            /* Each port's own supply: the contract is per connector. */
+            names.map { name ->
+                val port = TypeCClass.port(sysfs, name)
+                port.withContract(
+                    UcsiSupply.contract(sysfs, port.connector).withCharger(sysfs, names.size)
+                )
+            }
         } else {
+            val contract = UcsiSupply.contract(sysfs).withCharger(sysfs, ports = 1)
             /*
              * The type-C class is not always readable - on at least one Android
              * 16 build the shell is refused it - and what is left still says
@@ -82,7 +88,7 @@ object UcsiSupplySource : PdSource {
                  * charger that never spoke power delivery advertised nothing,
                  * so no interface could have published it.
                  */
-                ports.any { it.negotiatedPowerDelivery() } ->
+                ports.any { it.inPowerDelivery() } ->
                     EmptyReason.NO_OBJECT_INTERFACE
 
                 else -> null
@@ -90,22 +96,21 @@ object UcsiSupplySource : PdSource {
         )
     }
 
-    private fun Port.withContract(contract: Contract) = copy(
-        protocol = contract.protocol,
-        programmable = contract.programmable,
+    private fun Port.withContract(contract: Contract): Port {
+        val port = copy(protocol = contract.protocol, programmable = contract.programmable)
+        if (!port.inPowerDelivery()) {
+            return port
+        }
+
         /*
          * Withheld rather than shown wrong: against a programmable supply
          * UCSI's two figures read the fixed-supply fields of an APDO and mean
          * nothing. The charger firmware is what makes that knowable here, and
          * where it says nothing they are shown with the caveat instead.
          */
-        negotiatedMillivolts = contract.millivolts.takeUnless { contract.programmable == true },
-        negotiatedMilliamps = contract.milliamps.takeUnless { contract.programmable == true },
-    )
-
-    /* The class says it one way - "usb_power_delivery" - and the supply the other. */
-    private fun Port.negotiatedPowerDelivery() =
-        contract == PD_OPERATION_MODE || protocol?.startsWith("PD") == true
-
-    private const val PD_OPERATION_MODE = "usb_power_delivery"
+        return port.copy(
+            negotiatedMillivolts = contract.millivolts.takeUnless { contract.programmable == true },
+            negotiatedMilliamps = contract.milliamps.takeUnless { contract.programmable == true },
+        )
+    }
 }

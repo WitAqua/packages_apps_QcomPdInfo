@@ -84,6 +84,14 @@ data class Port(
      */
     val name: String?,
 
+    /**
+     * The UCSI connector this port is, counting from one. It is what selects
+     * the port's own power supply and what a command to the policy manager
+     * carries, so on a board with two ports everything else here depends on
+     * getting it right.
+     */
+    val connector: Int? = null,
+
     /** "sink", "source", "none" - already reduced from any bracketed list. */
     val powerRole: String? = null,
     val dataRole: String? = null,

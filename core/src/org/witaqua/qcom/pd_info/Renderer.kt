@@ -49,7 +49,7 @@ class Renderer(private val context: Context) {
                 if (port.capabilities.isNotEmpty()) {
                     add(capabilitySection(port))
                 }
-                contractSection(port, snapshot.origin)?.let { add(it) }
+                contractSection(port)?.let { add(it) }
             }
 
             snapshot.measured?.let { add(measuredSection(it, snapshot.origin)) }
@@ -63,7 +63,21 @@ class Renderer(private val context: Context) {
      * table below is the working.
      */
     fun headline(snapshot: Snapshot?): String {
-        val port = snapshot?.ports?.firstOrNull()
+        /*
+         * Which port the line is about. A board with two of them can hold a
+         * charger on one and a data cable on the other, and the contract is
+         * what somebody opened this for - so the port with one wins, rather
+         * than whichever the class happened to name first.
+         */
+        if (snapshot == null) {
+            return context.getString(R.string.headline_nothing)
+        }
+
+        val ports = snapshot.ports
+        val port = ports.firstOrNull { it.request != null }
+            ?: ports.firstOrNull { it.capabilities.isNotEmpty() }
+            ?: ports.firstOrNull { it.attached }
+            ?: ports.firstOrNull()
             ?: return context.getString(R.string.headline_nothing)
 
         if (snapshot.emptyReason == EmptyReason.NOTHING_ATTACHED) {
@@ -95,6 +109,18 @@ class Renderer(private val context: Context) {
 
                 else -> null
             }
+        } ?: port.negotiatedMillivolts?.let { millivolts ->
+            /*
+             * What UCSI made of the request, where the request itself is out of
+             * reach. Preferred over the measurement below because it is about
+             * this port: a board with two of them has one charger supply
+             * between them, and it may be describing the other cable.
+             */
+            context.getString(
+                R.string.headline_at,
+                volts(millivolts),
+                amps(port.negotiatedMilliamps ?: 0),
+            )
         } ?: snapshot.measured?.let { measured ->
             val millivolts = measured.millivolts ?: return@let null
             context.getString(
@@ -154,7 +180,7 @@ class Renderer(private val context: Context) {
      * the request object itself, the others only what UCSI derived from it - so
      * the rows say which it is rather than pretending they are the same thing.
      */
-    private fun contractSection(port: Port, origin: Origin): Section? {
+    private fun contractSection(port: Port): Section? {
         /*
          * Only where the request object itself is out of reach. UCSI's power
          * supply works both of these out with rdo_op_current() and
@@ -200,13 +226,11 @@ class Renderer(private val context: Context) {
             rows.isEmpty() -> null
 
             /*
-             * The upstream class arrives with the objects but without a
-             * voltage, so it gets the narrower line. Where there is no object
-             * list the reader has nothing to weigh either figure against, and
-             * what can be said depends on whether the charger firmware named
-             * the kind of contract.
+             * Both figures means both came from UCSI's own working out, which
+             * is what wants explaining; only the current means the voltage read
+             * zero, which is the kernel saying it never had the objects.
              */
-            origin != Origin.UCSI_SUPPLY ->
+            port.negotiatedMillivolts == null ->
                 context.getString(R.string.note_current_from_request)
 
             port.programmable == false ->
