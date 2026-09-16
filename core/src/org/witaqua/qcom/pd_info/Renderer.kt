@@ -58,7 +58,7 @@ class Renderer(private val context: Context) {
                 sinkSection(port)?.let { add(it) }
             }
 
-            snapshot.measured?.let { add(measuredSection(it, snapshot.origin)) }
+            snapshot.measured?.let { add(measuredSection(it, snapshot)) }
             emptyNote(snapshot)?.let { add(it) }
         }
     }
@@ -320,7 +320,7 @@ class Renderer(private val context: Context) {
         )
     }
 
-    private fun measuredSection(measured: Measured, origin: Origin) = Section(
+    private fun measuredSection(measured: Measured, snapshot: Snapshot) = Section(
         title = context.getString(R.string.section_measured, measured.supply),
         rows = buildList {
             measured.type?.let { add(Row(context.getString(R.string.label_reported_as), it)) }
@@ -341,7 +341,16 @@ class Renderer(private val context: Context) {
                 )
             }
         },
-        note = if (origin == Origin.UPSTREAM) {
+        /*
+         * Only where nothing said what was asked for. The upstream class
+         * carries no request of its own, so the measurement usually is the
+         * nearest thing to one - but a kernel that publishes the word on the
+         * type-C port has already answered that above, and saying it again
+         * here would contradict it.
+         */
+        note = if (
+            snapshot.origin == Origin.UPSTREAM && snapshot.ports.none { it.request != null }
+        ) {
             context.getString(R.string.note_measured_not_agreed)
         } else {
             null

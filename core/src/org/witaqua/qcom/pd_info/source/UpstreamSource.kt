@@ -9,6 +9,7 @@ import org.witaqua.qcom.pd_info.io.Sysfs
 import org.witaqua.qcom.pd_info.model.EmptyReason
 import org.witaqua.qcom.pd_info.model.Origin
 import org.witaqua.qcom.pd_info.model.Port
+import org.witaqua.qcom.pd_info.model.PowerDeliveryObject
 import org.witaqua.qcom.pd_info.model.Snapshot
 import org.witaqua.qcom.pd_info.model.SourceCapability
 import org.witaqua.qcom.pd_info.model.SourceFlags
@@ -19,11 +20,12 @@ import org.witaqua.qcom.pd_info.model.SourceFlags
  * nothing to decode here - only to read in the right order.
  *
  * Two things it does not have. There is no request object anywhere in the
- * class, so what was actually taken has to come from elsewhere; and the
- * capabilities are only registered when the driver read them, which with UCSI
- * means the firmware reporting PDO details. A platform that does not leaves the
- * devices in place and empty, which is the interesting case rather than an
- * error - see [EmptyReason].
+ * class, so what was actually taken has to come from elsewhere - from the
+ * type-C port where the kernel was taught to publish it, and from UCSI's power
+ * supply otherwise; and the capabilities are only registered when the driver
+ * read them, which with UCSI means the firmware reporting PDO details. A
+ * platform that does not leaves the devices in place and empty, which is the
+ * interesting case rather than an error - see [EmptyReason].
  */
 object UpstreamSource : PdSource {
     private const val PD = "/sys/class/usb_power_delivery"
@@ -117,6 +119,23 @@ object UpstreamSource : PdSource {
         )
         if (!port.inPowerDelivery()) {
             return port
+        }
+
+        /*
+         * The request itself, where the port publishes one. Decoded against
+         * the capability it names, the same lookup the kernel does, so a
+         * programmable contract reads its own fields rather than a fixed
+         * supply's - which is exactly what the two figures below get wrong.
+         */
+        TypeCClass.request(sysfs, name)?.let { word ->
+            return port.copy(
+                request = PowerDeliveryObject.request(
+                    word,
+                    capabilities.firstOrNull {
+                        it.position == PowerDeliveryObject.requestPosition(word)
+                    },
+                ),
+            )
         }
 
         /*

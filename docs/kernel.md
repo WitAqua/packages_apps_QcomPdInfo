@@ -40,7 +40,16 @@ The types are `fixed_supply`, `battery`, `variable_supply`,
 documented in `Documentation/ABI/testing/sysfs-class-usb_power_delivery`.
 
 It has no request object anywhere in the class. What was actually taken has to
-come from elsewhere - see below.
+come from elsewhere - see below - or from an attribute a kernel adds itself:
+
+```
+/sys/class/typec/port0/rdo             the request, as the one word it is
+```
+
+That one is not upstream and is not on a stock kernel. It is what the WitAqua
+sm8450 kernel publishes beside the backported class, out of `con->rdo`, and the
+app reads it wherever it is there; see
+[5.10_xiaomi-sm8450.md](5.10_xiaomi-sm8450.md).
 
 ## What the charger firmware adds
 
@@ -206,6 +215,12 @@ close the one gap that no amount of policy can. It is a real omission rather
 than a quirk: `drivers/usb/typec/pd.c` has nothing for a request at any kernel
 version, so TCPM ports lack it for the same reason UCSI ones do. Worth putting
 upstream.
+
+Done as a type-C port attribute in the WitAqua sm8450 kernel, which is where it
+could be had without reshaping anything: the connector already holds the word,
+`typec_port` is already a device, and a `rdo` beside `power_operation_mode`
+needs no new object lifetime. The `usb_power_delivery` device is the better
+home for it and is what an upstream change should use.
 
 With both, the object lists and the request come out of sysfs, the app needs
 neither root nor debugfs on the upstream path, and the module has nothing left

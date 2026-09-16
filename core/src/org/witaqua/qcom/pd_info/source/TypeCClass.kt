@@ -52,6 +52,25 @@ internal object TypeCClass {
         sysfs.resolve("$DIRECTORY/$port/usb_power_delivery")
 
     /**
+     * The request object this port's own connector sent, as a 32-bit word.
+     *
+     * Not an upstream attribute. The class has never published a request and
+     * the power delivery class beside it does not either, so a board whose
+     * only object interface is that class can show the menu and not the line
+     * that was ordered from it. UCSI has the word all along - con->rdo, kept by
+     * ucsi_pwr_opmode_change() - and the WitAqua kernels publish it here; see
+     * docs/5.10_xiaomi-sm8450.md. Absent everywhere else, which is ordinary.
+     *
+     * Zero while no contract is in force, and that is the same as nothing:
+     * object positions count from one.
+     */
+    fun request(sysfs: Sysfs, port: String): Long? =
+        sysfs.read("$DIRECTORY/$port/rdo")
+            ?.removePrefix("0x")
+            ?.toLongOrNull(16)
+            ?.takeIf { it != 0L }
+
+    /**
      * What the class says about one port. Anything a data object would add is
      * left for the caller to fill in.
      */
